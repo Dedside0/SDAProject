@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="SDA.Db/SDA.Db.csproj" />
+  <Project Path="SDA.Web/SDA.Web.csproj" />
+</Solution>

@@ -1,0 +1,50 @@
+﻿<!-- ===== HOME PAGE ===== -->
+<section class="page active" id="page-home">
+    <div class="page-header">
+        <div class="page-title-block">
+            <h1 class="page-title">Добро<br>пожаловать</h1>
+            <p class="page-subtitle">Система подготовки к экзамену ПДД</p>
+        </div>
+        <div class="header-badge">2026</div>
+    </div>
+
+    <div class="home-stats-row">
+        <div class="hstat-card">
+            <span class="hstat-num" id="hs-total">0</span>
+            <span class="hstat-label">Вопросов пройдено</span>
+        </div>
+        <div class="hstat-card accent">
+            <span class="hstat-num" id="hs-correct">0%</span>
+            <span class="hstat-label">Правильных ответов</span>
+        </div>
+        <div class="hstat-card">
+            <span class="hstat-num" id="hs-streak">0</span>
+            <span class="hstat-label">Дней подряд</span>
+        </div>
+    </div>
+
+    <h2 class="section-heading">Выберите режим</h2>
+    <div class="mode-grid">
+        <div class="mode-card" data-goto="exam">
+            <div class="mode-icon">◈</div>
+            <h3>Экзамен</h3>
+            <p>20 вопросов · 20 минут<br>Не более 2 ошибок</p>
+            <div class="mode-tag">официальный</div>
+        </div>
+        <div class="mode-card" data-goto="train">
+            <div class="mode-icon">◉</div>
+            <h3>Тренировка</h3>
+            <p>Все темы · без ограничений<br>Мгновенная подсказка</p>
+            <div class="mode-tag">рекомендуется</div>
+        </div>
+        <div class="mode-card" data-goto="mistakes">
+            <div class="mode-icon">◪</div>
+            <h3>Работа над ошибками</h3>
+            <p>Только ваши ошибки<br>Закрепление материала</p>
+            <div class="mode-tag" id="mistakes-count-badge">0 ошибок</div>
+        </div>
+    </div>
+
+    <h2 class="section-heading">Темы билетов</h2>
+    <div class="topics-list" id="topics-list"></div>
+</section>

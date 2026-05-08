@@ -1,0 +1,43 @@
+﻿<!-- ───────── SIDEBAR NAV ───────── -->
+<nav class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+        <span class="logo-icon">🚦</span>
+        <span class="logo-text">ПДД<br><small>Экзаменатор</small></span>
+    </div>
+    <ul class="nav-links">
+        <li>
+            <a asp-action="index" class="nav-link active" data-page="home">
+                <span class="nav-icon">⬡</span> Главная
+            </a>
+        </li>
+        <li>
+            <a asp-action="exam" class="nav-link" data-page="exam">
+                <span class="nav-icon">◈</span> Экзамен
+            </a>
+        </li>
+        <li>
+            <a asp-action="train" class="nav-link" data-page="train">
+                <span class="nav-icon">◉</span> Тренировка
+            </a>
+        </li>
+        <li>
+            <a asp-action="mistakes" class="nav-link" data-page="mistakes">
+                <span class="nav-icon">◪</span> Ошибки
+            </a>
+        </li>
+        <li>
+            <a asp-action="stats" class="nav-link" data-page="stats">
+                <span class="nav-icon">◧</span> Статистика
+            </a>
+        </li>
+    </ul>
+    <div class="sidebar-bottom">
+        <div class="user-card">
+            <div class="user-avatar">АИ</div>
+            <div class="user-info">
+                <span class="user-name">Алексей И.</span>
+                <span class="user-level">Уровень: Новичок</span>
+            </div>
+        </div>
+    </div>
+</nav>

@@ -1,0 +1,31 @@
+﻿<!-- ===== EXAM PAGE ===== -->
+<section class="page" id="page-exam">
+    <div class="page-header">
+        <div class="page-title-block">
+            <h1 class="page-title">Экзамен</h1>
+            <p class="page-subtitle">Официальный режим · 20 вопросов</p>
+        </div>
+    </div>
+
+    <div id="exam-setup" class="setup-panel">
+        <p class="setup-desc">
+            Условия: <strong>20 вопросов</strong>, <strong>20 минут</strong>, допускается не
+            более <strong>2 ошибок</strong>. Результат фиксируется в статистике.
+        </p>
+        <button asp-controller="Exam" asp-action="Card" class="btn-primary" id="start-exam-btn">Начать экзамен</button>
+    </div>
+
+    
+
+    <div id="exam-result" class="result-panel">
+        <div class="result-icon" id="exam-result-icon">✓</div>
+        <h2 id="exam-result-title">Экзамен сдан!</h2>
+        <p id="exam-result-desc"></p>
+        <div class="result-stats">
+            <div><span id="er-correct">0</span><small>правильно</small></div>
+            <div><span id="er-wrong">0</span><small>ошибок</small></div>
+            <div><span id="er-time">0</span><small>секунд</small></div>
+        </div>
+        <button class="btn-primary" id="exam-retry-btn">Попробовать снова</button>
+    </div>
+</section>

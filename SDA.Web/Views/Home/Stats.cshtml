@@ -1,0 +1,50 @@
+﻿<!-- ===== STATS PAGE ===== -->
+<section class="page" id="page-stats">
+    <div class="page-header">
+        <div class="page-title-block">
+            <h1 class="page-title">Статистика</h1>
+            <p class="page-subtitle">Ваш прогресс и аналитика</p>
+        </div>
+    </div>
+
+    <div class="stats-overview">
+        <div class="stat-big-card">
+            <span class="sbc-label">Всего сессий</span>
+            <span class="sbc-num" id="stat-sessions">0</span>
+        </div>
+        <div class="stat-big-card accent">
+            <span class="sbc-label">Точность</span>
+            <span class="sbc-num" id="stat-accuracy">—</span>
+        </div>
+        <div class="stat-big-card">
+            <span class="sbc-label">Экзаменов сдано</span>
+            <span class="sbc-num" id="stat-passed">0</span>
+        </div>
+        <div class="stat-big-card">
+            <span class="sbc-label">Слабая тема</span>
+            <span class="sbc-num small-text" id="stat-weak">—</span>
+        </div>
+    </div>
+
+    <h2 class="section-heading">История сессий</h2>
+    <div class="sessions-table-wrap">
+        <table class="sessions-table">
+            <thead>
+                <tr>
+                    <th>Дата</th>
+                    <th>Режим</th>
+                    <th>Вопросов</th>
+                    <th>Правильно</th>
+                    <th>Результат</th>
+                </tr>
+            </thead>
+            <tbody id="sessions-tbody"></tbody>
+        </table>
+        <div class="empty-table-msg hidden" id="sessions-empty">Нет данных. Пройдите хотя бы одну сессию.</div>
+    </div>
+
+    <h2 class="section-heading">Точность по темам</h2>
+    <div class="topic-accuracy-list" id="topic-accuracy-list"></div>
+
+    <button class="btn-danger" id="reset-stats-btn" style="margin-top:2rem">Сбросить всю статистику</button>
+</section>
