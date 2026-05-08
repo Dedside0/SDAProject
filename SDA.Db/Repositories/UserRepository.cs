@@ -1,4 +1,6 @@
-﻿using System;
+﻿using Microsoft.EntityFrameworkCore;
+using SDA.Db.Models;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -8,5 +10,6 @@ namespace SDA.Db.Repositories
 {
     internal class UserRepository: IUserRepository
     {
+        
     }
 }

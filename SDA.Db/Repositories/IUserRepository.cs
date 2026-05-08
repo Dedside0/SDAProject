@@ -8,7 +8,5 @@ namespace SDA.Db.Repositories
 {
     internal interface IUserRepository
     {
-
-
     }
 }

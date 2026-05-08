@@ -2,7 +2,7 @@
 
 namespace SDAProject.Controllers
 {
-    public class ExamController : Controller
+    public class ExamController(ICardRepo) : Controller
     {
         
         public IActionResult Index()

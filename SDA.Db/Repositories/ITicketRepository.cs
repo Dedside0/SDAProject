@@ -1,12 +1,12 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using SDA.Db.Models;
 
 namespace SDA.Db.Repositories
 {
     internal interface ITicketRepository
     {
+        Task Create(Ticket ticket);
+        List<Ticket>? GetAll();
+        Task<Ticket?> GetById(Guid id);
+        Task Update(Ticket ticket);
     }
 }

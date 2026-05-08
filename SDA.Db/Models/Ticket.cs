@@ -11,7 +11,7 @@ namespace SDA.Db.Models
         public Guid Id { get; set; }
 
         public string Name { get; set; }
-        public List<TicketQuestion> Questions { get; set; }
+        public List<TicketQuestion> TicketQuestions { get; set; }
 
 
 
