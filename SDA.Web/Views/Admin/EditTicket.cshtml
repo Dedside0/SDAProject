@@ -1,0 +1,528 @@
+﻿<!-- LAYOUT -->
+<div>
+    <nav class="topnav">
+        <div class="nav-logo">
+            🚦 Администрирование
+        </div>
+        @* <div class="nav-right">
+            <a href="#" class="btn-secondary">← Назад к сайту</a>
+            <button class="btn-primary" onclick="saveAll()">💾 Сохранить всё</button>
+        </div> *@
+    </nav>
+    <div class="layout">
+
+        <!-- ═══ LEFT: TICKET LIST ═══ -->
+        <aside class="list-panel">
+            <div class="list-header">
+                <div class="list-title">Билеты</div>
+                <div class="list-count" id="list-count">12 билетов · 240 вопросов</div>
+            </div>
+            <div class="search-wrap">
+                <input class="search-input" type="text" placeholder="🔍  Поиск по названию…" oninput="filterTickets(this.value)" />
+            </div>
+            <div class="tickets-list" id="tickets-list"></div>
+            <button class="add-ticket-btn" onclick="addTicket()">＋ Добавить билет</button>
+        </aside>
+
+        <!-- ═══ RIGHT: EDITOR ═══ -->
+        <main class="editor-panel" id="editor-panel">
+            <div class="empty-editor" id="empty-editor">
+                <div class="empty-glyph">№</div>
+                <h2>Выберите билет</h2>
+                <p>Нажмите на любой билет слева, чтобы начать редактирование</p>
+            </div>
+            <div id="ticket-editor" style="display:none"></div>
+        </main>
+
+    </div>
+
+    <!-- SAVE BAR -->
+    <div class="save-bar" id="save-bar">
+        <span class="save-bar-msg">Есть несохранённые изменения</span>
+        <div class="save-bar-actions">
+            <button class="btn-danger" onclick="discardChanges()">Отменить</button>
+            <button class="btn-primary" onclick="saveCurrentTicket()">Сохранить билет</button>
+        </div>
+    </div>
+
+    <!-- CONFIRM DIALOG -->
+    <div class="confirm-overlay" id="confirm-overlay">
+        <div class="confirm-box">
+            <h3 id="confirm-title">Удалить билет?</h3>
+            <p id="confirm-msg">Это действие нельзя отменить. Все вопросы билета будут удалены.</p>
+            <div class="confirm-btns">
+                <button class="btn-danger" id="confirm-yes-btn">Удалить</button>
+                <button class="btn-secondary" onclick="closeConfirm()">Отмена</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- TOAST -->
+    <div class="toast" id="toast"></div>
+</div>
+
+
+
+@section Scripts {
+    <script>
+        let tickets = [
+            {
+                id: 1, name: "Общие положения ПДД", category: "Базовый", difficulty: "Лёгкий", description: "Основные понятия и термины Правил дорожного движения.",
+                questions: [
+                    { id: 101, text: "С какого возраста разрешается управлять мотоциклом категории «А»?", image: null, hint: "Категория А — с 18 лет (ФЗ о БДД, ст. 26).", answers: [{ text: "С 16 лет", correct: false }, { text: "С 18 лет", correct: true }, { text: "С 21 года", correct: false }] },
+                    { id: 102, text: "Что является приоритетом при противоречии между дорожными знаками и разметкой?", image: null, hint: "Знаки главнее разметки, регулировщик главнее всего.", answers: [{ text: "Разметка", correct: false }, { text: "Дорожные знаки", correct: true }, { text: "Регулировщик всегда главнее", correct: false }] },
+                ]
+            },
+            {
+                id: 2, name: "Дорожные знаки", category: "Знаки", difficulty: "Средний", description: "Предупреждающие, запрещающие, предписывающие и информационные знаки.",
+                questions: [
+                    { id: 201, text: "Что означает дорожный знак 2.4 «Уступите дорогу»?", image: null, hint: "Уступить, но не обязательно останавливаться — это знак 2.5.", answers: [{ text: "Остановка обязательна", correct: false }, { text: "Уступить дорогу без обязательной остановки", correct: true }, { text: "Въезд запрещён", correct: false }] },
+                    { id: 202, text: "Что означает знак 3.27 «Остановка запрещена»?", image: null, hint: "3.27 — запрет любой остановки.", answers: [{ text: "Запрещена только длительная стоянка", correct: false }, { text: "Запрещены стоянка и остановка", correct: true }, { text: "Запрещён въезд", correct: false }] },
+                ]
+            },
+            {
+                id: 3, name: "Разметка и её характеристики", category: "Разметка", difficulty: "Средний", description: "Горизонтальная и вертикальная разметка проезжей части.",
+                questions: [
+                    { id: 301, text: "Что обозначает сплошная белая линия разметки 1.1?", image: null, hint: "Разметка 1.1 — запрет пересечения.", answers: [{ text: "Разделяет попутные потоки", correct: false }, { text: "Разделяет встречные потоки, пересекать запрещено", correct: true }, { text: "Обозначает место остановки", correct: false }] },
+                ]
+            },
+            {
+                id: 4, name: "Сигналы светофора", category: "Светофор", difficulty: "Лёгкий", description: "Значения сигналов светофора и порядок движения.",
+                questions: [
+                    { id: 401, text: "Разрешается ли продолжать движение при мигающем зелёном?", image: null, hint: "Мигающий зелёный — можно ехать, но скоро жёлтый.", answers: [{ text: "Нет, нужно остановиться", correct: false }, { text: "Да, сигнал предупреждает о скором переключении", correct: true }, { text: "Только пешеходам", correct: false }] },
+                    { id: 402, text: "Что означает жёлтый мигающий сигнал светофора?", image: null, hint: "Мигающий жёлтый — нерегулируемый режим.", answers: [{ text: "Движение запрещено", correct: false }, { text: "Нерегулируемый перекрёсток или место опасности", correct: true }, { text: "Движение без ограничений", correct: false }] },
+                ]
+            },
+            {
+                id: 5, name: "Регулировщик", category: "Базовый", difficulty: "Лёгкий", description: "Сигналы регулировщика и порядок их применения.",
+                questions: [
+                    { id: 501, text: "Поднятая вверх рука регулировщика соответствует какому сигналу?", image: null, hint: "Поднятая рука = жёлтый = внимание.", answers: [{ text: "Красному", correct: false }, { text: "Жёлтому — всем стоп/внимание", correct: true }, { text: "Зелёному", correct: false }] },
+                ]
+            },
+            {
+                id: 6, name: "Начало движения, маневрирование", category: "Маневры", difficulty: "Средний", description: "Правила начала движения, перестроения, поворотов.",
+                questions: [
+                    { id: 601, text: "Что должен сделать водитель перед перестроением?", image: null, hint: "Убедиться в безопасности и подать сигнал.", answers: [{ text: "Только включить указатель", correct: false }, { text: "Убедиться в безопасности и подать сигнал", correct: true }, { text: "Снизить скорость до 40 км/ч", correct: false }] },
+                ]
+            },
+            {
+                id: 7, name: "Расположение ТС на дороге", category: "Базовый", difficulty: "Лёгкий", description: "Правила расположения транспортных средств по полосам.",
+                questions: [
+                    { id: 701, text: "Сколько рядов должна занимать колонна на двусторонней дороге?", image: null, hint: "Колонна — один ряд по крайней правой полосе.", answers: [{ text: "Не более одного ряда", correct: true }, { text: "Не более двух рядов", correct: false }, { text: "Сколько угодно при сопровождении", correct: false }] },
+                ]
+            },
+            {
+                id: 8, name: "Скорость движения", category: "Скорость", difficulty: "Лёгкий", description: "Ограничения скорости в населённых пунктах и вне их.",
+                questions: [
+                    { id: 801, text: "Какова максимальная скорость на автомагистрали?", image: null, hint: "110 км/ч для легковых автомобилей.", answers: [{ text: "90 км/ч", correct: false }, { text: "110 км/ч", correct: true }, { text: "130 км/ч", correct: false }] },
+                    { id: 802, text: "Какова минимальная скорость на автомагистрали?", image: null, hint: "Минимум 40 км/ч на автомагистрали.", answers: [{ text: "40 км/ч", correct: true }, { text: "60 км/ч", correct: false }, { text: "Ограничений нет", correct: false }] },
+                ]
+            },
+            {
+                id: 9, name: "Обгон, опережение, встречный разъезд", category: "Маневры", difficulty: "Трудный", description: "Правила обгона и случаи, когда он запрещён.",
+                questions: [
+                    { id: 901, text: "Разрешается ли обгон на пешеходном переходе?", image: null, hint: "Обгон на пешеходных переходах запрещён (п. 11.4).", answers: [{ text: "Да, если пешеходов нет", correct: false }, { text: "Нет, обгон запрещён", correct: true }, { text: "Да, в любом случае", correct: false }] },
+                ]
+            },
+            {
+                id: 10, name: "Остановка и стоянка", category: "Стоянка", difficulty: "Средний", description: "Где разрешено и запрещено останавливаться и стоять.",
+                questions: [
+                    { id: 1001, text: "Где запрещена стоянка?", image: null, hint: "В тоннелях, на мостах и эстакадах — запрещено.", answers: [{ text: "На крайней правой полосе вне нас. пункта", correct: false }, { text: "В тоннелях, на мостах и эстакадах", correct: true }, { text: "На обочине в нас. пункте", correct: false }] },
+                ]
+            },
+            {
+                id: 11, name: "Проезд перекрёстков", category: "Перекрёстки", difficulty: "Трудный", description: "Регулируемые и нерегулируемые перекрёстки, приоритет.",
+                questions: [
+                    { id: 1101, text: "Кто имеет преимущество на нерегулируемом перекрёстке равнозначных дорог?", image: null, hint: "Правило «помехи справа».", answers: [{ text: "Движущийся прямо", correct: false }, { text: "Транспортное средство справа", correct: true }, { text: "Въехавший первым", correct: false }] },
+                ]
+            },
+            {
+                id: 12, name: "Пешеходные переходы и остановки", category: "Пешеходы", difficulty: "Средний", description: "Правила проезда пешеходных переходов и автобусных остановок.",
+                questions: [
+                    { id: 1201, text: "Обязан ли водитель уступить стоящему у перехода пешеходу?", image: null, hint: "Только если пешеход уже вступил на проезжую часть.", answers: [{ text: "Да, всегда", correct: false }, { text: "Только если пешеход ступил на проезжую часть", correct: true }, { text: "Нет, пешеход обязан ждать", correct: false }] },
+                ]
+            },
+        ];
+
+        let activeTicketId = null;
+        let isDirty = false;
+        let answerCounter = 9000;
+        let questionCounter = 5000;
+
+        /* ════════ RENDER LIST ════════ */
+        function renderList(filter = '') {
+            const container = document.getElementById('tickets-list');
+            container.innerHTML = '';
+            const filtered = filter
+                ? tickets.filter(t => t.name.toLowerCase().includes(filter.toLowerCase()))
+                : tickets;
+
+            document.getElementById('list-count').textContent =
+                `${tickets.length} билет${plural(tickets.length, '', 'а', 'ов')} · ${tickets.reduce((s, t) => s + t.questions.length, 0)} вопрос${plural(tickets.reduce((s, t) => s + t.questions.length, 0), '', 'а', 'ов')}`;
+
+            filtered.forEach(t => {
+                const div = document.createElement('div');
+                div.className = 'ticket-item' + (t.id === activeTicketId ? ' active' : '');
+                div.dataset.id = t.id;
+                div.innerHTML = `
+                    <div class="ticket-num">${String(t.id).padStart(2, '0')}</div>
+                    <div class="ticket-meta">
+                        <div class="ticket-name">${t.name}</div>
+                        <div class="ticket-info">${t.questions.length} вопр. · ${t.difficulty}</div>
+                    </div>
+                    <div class="ticket-badge">${t.category}</div>`;
+                div.onclick = () => openTicket(t.id);
+                container.appendChild(div);
+            });
+        }
+
+        function plural(n, one, few, many) {
+            const m = Math.abs(n) % 100, m10 = m % 10;
+            if (m > 10 && m < 20) return many;
+            if (m10 === 1) return one;
+            if (m10 >= 2 && m10 <= 4) return few;
+            return many;
+        }
+
+        function filterTickets(val) { renderList(val); }
+
+        /* ════════ OPEN TICKET ════════ */
+        function openTicket(id) {
+            if (isDirty && activeTicketId !== id) {
+                if (!confirm('Есть несохранённые изменения. Перейти без сохранения?')) return;
+                setDirty(false);
+            }
+            activeTicketId = id;
+            const t = tickets.find(x => x.id === id);
+            if (!t) return;
+            document.getElementById('empty-editor').style.display = 'none';
+            document.getElementById('ticket-editor').style.display = 'block';
+            renderEditor(t);
+            renderList(document.querySelector('.search-input').value);
+        }
+
+        /* ════════ RENDER EDITOR ════════ */
+        function renderEditor(t) {
+            const el = document.getElementById('ticket-editor');
+            el.innerHTML = `
+                <div class="editor-top">
+                    <div class="editor-top-left">
+                        <div class="editor-label">Название билета</div>
+                        <input class="ticket-title-input" type="text" value="${esc(t.name)}" placeholder="Введите название…"
+                            oninput="patchTicket('name', this.value)" />
+                    </div>
+                    <div class="editor-actions">
+                        <button class="btn-danger" onclick="confirmDeleteTicket(${t.id})">🗑 Удалить</button>
+                        <button class="btn-primary" onclick="saveCurrentTicket()">💾 Сохранить</button>
+                    </div>
+                </div>
+
+                <div class="meta-row">
+                    <div class="meta-field">
+                        <label>Категория</label>
+                        <input class="meta-input" type="text" value="${esc(t.category)}" oninput="patchTicket('category',this.value)" />
+                    </div>
+                    <div class="meta-field">
+                        <label>Сложность</label>
+                        <select class="meta-select" onchange="patchTicket('difficulty',this.value)">
+                            ${['Лёгкий', 'Средний', 'Трудный'].map(d => `<option${t.difficulty === d ? ' selected' : ''}>${d}</option>`).join('')}
+                        </select>
+                    </div>
+                    <div class="meta-field">
+                        <label>ID билета</label>
+                        <input class="meta-input" type="text" value="${t.id}" disabled style="opacity:.4;cursor:default"/>
+                    </div>
+                    <div class="meta-field" style="grid-column:1/-1">
+                        <label>Описание</label>
+                        <textarea class="meta-input" rows="2" oninput="patchTicket('description',this.value)">${esc(t.description)}</textarea>
+                    </div>
+                </div>
+
+                <div class="section-head">
+                    <div class="section-title">Вопросы (${t.questions.length})</div>
+                    <button class="add-q-btn" onclick="addQuestion(${t.id})">＋ Добавить вопрос</button>
+                </div>
+
+                <div id="questions-container">
+                    ${t.questions.map((q, qi) => renderQuestionCard(t.id, q, qi)).join('')}
+                </div>`;
+        }
+
+        /* ════════ RENDER QUESTION CARD ════════ */
+        function renderQuestionCard(tid, q, qi) {
+            const letters = ['А', 'Б', 'В', 'Г', 'Д'];
+            return `
+                <div class="q-card" id="qcard-${q.id}">
+                    <div class="q-card-head" onclick="toggleQuestion(${q.id})">
+                        <div class="q-index">${String(qi + 1).padStart(2, '0')}</div>
+                        <div class="q-preview" id="qprev-${q.id}">${q.text || 'Без текста'}</div>
+                        <div class="q-expand-icon">▾</div>
+                    </div>
+                    <div class="q-card-body">
+                        <div class="field-group">
+                            <label>Текст вопроса</label>
+                            <textarea class="field-input" rows="3"
+                                oninput="patchQuestion(${tid},${q.id},'text',this.value);document.getElementById('qprev-${q.id}').textContent=this.value||'Без текста'"
+                                >${esc(q.text)}</textarea>
+                        </div>
+                        <div class="field-group">
+                            <label>Изображение (опционально)</label>
+                            <div class="img-stub" onclick="alert('Здесь будет загрузка изображения — подключите к ASP.NET')">
+                                <div class="img-stub-icon">🖼</div>
+                                <span>${q.image ? 'Изменить изображение' : 'Нажмите, чтобы добавить изображение'}</span>
+                            </div>
+                        </div>
+                        <div class="field-group">
+                            <div class="answers-label">Варианты ответов</div>
+                            <div id="answers-${q.id}">
+                                ${q.answers.map((a, ai) => renderAnswerRow(tid, q.id, a, ai, letters[ai])).join('')}
+                            </div>
+                            <button class="add-ans-btn" onclick="addAnswer(${tid},${q.id})">＋ Добавить вариант</button>
+                        </div>
+                        <div class="field-group">
+                            <button class="hint-toggle-btn" onclick="toggleHint(${q.id})">
+                                ${q.hint ? '✎ Редактировать подсказку' : '＋ Добавить подсказку'}
+                            </button>
+                            <div class="hint-field" id="hint-field-${q.id}" style="${q.hint ? '' : 'display:none'}">
+                                <label style="font-size:.68rem;text-transform:uppercase;letter-spacing:.1em;color:var(--text-muted);display:block;margin-bottom:.35rem;margin-top:.5rem">Подсказка / объяснение</label>
+                                <textarea class="field-input" rows="2"
+                                    oninput="patchQuestion(${tid},${q.id},'hint',this.value)"
+                                    >${esc(q.hint || '')}</textarea>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="q-card-foot">
+                        <div class="q-move-btns">
+                            <button class="move-btn" title="Вверх" onclick="moveQuestion(${tid},${q.id},-1)">↑</button>
+                            <button class="move-btn" title="Вниз" onclick="moveQuestion(${tid},${q.id},+1)">↓</button>
+                        </div>
+                        <button class="del-q-btn" onclick="confirmDeleteQuestion(${tid},${q.id})">✕ Удалить вопрос</button>
+                    </div>
+                </div>`;
+        }
+
+        function renderAnswerRow(tid, qid, a, ai, letter) {
+            return `
+                <div class="answer-row" id="arow-${qid}-${ai}">
+                    <div class="ans-letter-badge">${letter}</div>
+                    <input class="ans-text-input" type="text" value="${esc(a.text)}"
+                        placeholder="Вариант ответа…"
+                        oninput="patchAnswer(${tid},${qid},${ai},'text',this.value)" />
+                    <label class="correct-toggle" title="Правильный ответ">
+                        <input type="checkbox" ${a.correct ? 'checked' : ''} onchange="patchAnswer(${tid},${qid},${ai},'correct',this.checked)" />
+                        <div class="ct-box">✓</div>
+                        <span class="ct-label">Верный</span>
+                    </label>
+                    <button class="del-ans-btn" title="Удалить" onclick="deleteAnswer(${tid},${qid},${ai})">✕</button>
+                </div>`;
+        }
+
+        /* ════════ TOGGLE HELPERS ════════ */
+        function toggleQuestion(qid) {
+            const card = document.getElementById('qcard-' + qid);
+            card.classList.toggle('open');
+        }
+
+        function toggleHint(qid) {
+            const f = document.getElementById('hint-field-' + qid);
+            f.style.display = f.style.display === 'none' ? 'block' : 'none';
+        }
+
+        /* ════════ PATCH HELPERS ════════ */
+        function patchTicket(key, val) {
+            const t = tickets.find(x => x.id === activeTicketId);
+            if (!t) return;
+            t[key] = val;
+            setDirty(true);
+            if (key === 'name') renderList(document.querySelector('.search-input').value);
+        }
+
+        function patchQuestion(tid, qid, key, val) {
+            const t = tickets.find(x => x.id === tid);
+            if (!t) return;
+            const q = t.questions.find(x => x.id === qid);
+            if (!q) return;
+            q[key] = val;
+            setDirty(true);
+        }
+
+        function patchAnswer(tid, qid, ai, key, val) {
+            const t = tickets.find(x => x.id === tid);
+            if (!t) return;
+            const q = t.questions.find(x => x.id === qid);
+            if (!q || !q.answers[ai]) return;
+            q.answers[ai][key] = val;
+            setDirty(true);
+        }
+
+        /* ════════ ADD / DELETE ════════ */
+        function addAnswer(tid, qid) {
+            const t = tickets.find(x => x.id === tid);
+            if (!t) return;
+            const q = t.questions.find(x => x.id === qid);
+            if (!q) return;
+            const ai = q.answers.length;
+            const letters = ['А', 'Б', 'В', 'Г', 'Д'];
+            if (ai >= 5) { showToast('Максимум 5 вариантов', 'error'); return; }
+            q.answers.push({ text: '', correct: false });
+            setDirty(true);
+            const container = document.getElementById('answers-' + qid);
+            const div = document.createElement('div');
+            div.innerHTML = renderAnswerRow(tid, qid, q.answers[ai], ai, letters[ai]);
+            container.appendChild(div.firstElementChild);
+        }
+
+        function deleteAnswer(tid, qid, ai) {
+            const t = tickets.find(x => x.id === tid);
+            if (!t) return;
+            const q = t.questions.find(x => x.id === qid);
+            if (!q) return;
+            if (q.answers.length <= 2) { showToast('Минимум 2 варианта', 'error'); return; }
+            q.answers.splice(ai, 1);
+            setDirty(true);
+            const container = document.getElementById('answers-' + qid);
+            const letters = ['А', 'Б', 'В', 'Г', 'Д'];
+            container.innerHTML = q.answers.map((a, i) => renderAnswerRow(tid, qid, a, i, letters[i])).join('');
+        }
+
+        function addQuestion(tid) {
+            const t = tickets.find(x => x.id === tid);
+            if (!t) return;
+            const newQ = {
+                id: questionCounter++,
+                text: '', image: null, hint: '',
+                answers: [{ text: '', correct: true }, { text: '', correct: false }, { text: '', correct: false }]
+            };
+            t.questions.push(newQ);
+            setDirty(true);
+            const container = document.getElementById('questions-container');
+            const qi = t.questions.length - 1;
+            const div = document.createElement('div');
+            div.innerHTML = renderQuestionCard(tid, newQ, qi);
+            container.appendChild(div.firstElementChild);
+            document.getElementById('qcard-' + newQ.id).classList.add('open');
+            document.getElementById('qcard-' + newQ.id).scrollIntoView({ behavior: 'smooth', block: 'center' });
+            document.querySelector('.section-title').textContent = `Вопросы (${t.questions.length})`;
+        }
+
+        function moveQuestion(tid, qid, dir) {
+            const t = tickets.find(x => x.id === tid);
+            if (!t) return;
+            const i = t.questions.findIndex(x => x.id === qid);
+            const j = i + dir;
+            if (j < 0 || j >= t.questions.length) return;
+            [t.questions[i], t.questions[j]] = [t.questions[j], t.questions[i]];
+            setDirty(true);
+            renderEditor(t);
+        }
+
+        function addTicket() {
+            const newT = {
+                id: Math.max(...tickets.map(x => x.id)) + 1,
+                name: 'Новый билет', category: 'Базовый', difficulty: 'Лёгкий', description: '',
+                questions: [
+                    { id: questionCounter++, text: '', image: null, hint: '', answers: [{ text: '', correct: true }, { text: '', correct: false }, { text: '', correct: false }] }
+                ]
+            };
+            tickets.push(newT);
+            renderList();
+            openTicket(newT.id);
+        }
+
+        /* ════════ DELETE (confirm) ════════ */
+        let confirmCallback = null;
+
+        function confirmDeleteTicket(id) {
+            const t = tickets.find(x => x.id === id);
+            document.getElementById('confirm-title').textContent = 'Удалить билет?';
+            document.getElementById('confirm-msg').textContent = `Билет «${t.name}» и все его вопросы будут удалены. Это действие нельзя отменить.`;
+            confirmCallback = () => {
+                tickets = tickets.filter(x => x.id !== id);
+                activeTicketId = null;
+                setDirty(false);
+                renderList();
+                document.getElementById('empty-editor').style.display = '';
+                document.getElementById('ticket-editor').style.display = 'none';
+                showToast('Билет удалён');
+                closeConfirm();
+            };
+            document.getElementById('confirm-yes-btn').onclick = confirmCallback;
+            document.getElementById('confirm-overlay').classList.add('show');
+        }
+
+        function confirmDeleteQuestion(tid, qid) {
+            const t = tickets.find(x => x.id === tid);
+            const q = t.questions.find(x => x.id === qid);
+            document.getElementById('confirm-title').textContent = 'Удалить вопрос?';
+            document.getElementById('confirm-msg').textContent = `Вопрос «${q.text || 'Без текста'}» будет удалён.`;
+            confirmCallback = () => {
+                t.questions = t.questions.filter(x => x.id !== qid);
+                setDirty(true);
+                document.getElementById('qcard-' + qid)?.remove();
+                document.querySelector('.section-title').textContent = `Вопросы (${t.questions.length})`;
+                const cards = document.querySelectorAll('.q-card');
+                cards.forEach((c, i) => { const idx = c.querySelector('.q-index'); if (idx) idx.textContent = String(i + 1).padStart(2, '0'); });
+                showToast('Вопрос удалён');
+                closeConfirm();
+            };
+            document.getElementById('confirm-yes-btn').onclick = confirmCallback;
+            document.getElementById('confirm-overlay').classList.add('show');
+        }
+
+        function closeConfirm() {
+            document.getElementById('confirm-overlay').classList.remove('show');
+            confirmCallback = null;
+        }
+
+        /* ════════ DIRTY / SAVE ════════ */
+        function setDirty(val) {
+            isDirty = val;
+            const bar = document.getElementById('save-bar');
+            if (val) bar.classList.add('visible');
+            else bar.classList.remove('visible');
+        }
+
+        function saveCurrentTicket() {
+            // await fetch('/api/tickets/' + activeTicketId, { method: 'PUT', body: JSON.stringify(ticket) });
+            setDirty(false);
+            renderList(document.querySelector('.search-input').value);
+            showToast('Билет сохранён ✓');
+        }
+
+        function saveAll() {
+            // await fetch('/api/tickets', { method: 'PUT', body: JSON.stringify(tickets) });
+            setDirty(false);
+            renderList(document.querySelector('.search-input').value);
+            showToast('Все билеты сохранены ✓');
+        }
+
+        function discardChanges() {
+            if (!confirm('Отменить все несохранённые изменения?')) return;
+            setDirty(false);
+            if (activeTicketId) {
+                const t = tickets.find(x => x.id === activeTicketId);
+                if (t) renderEditor(t);
+            }
+            showToast('Изменения отменены');
+        }
+
+        /* ════════ TOAST ════════ */
+        function showToast(msg, type = '') {
+            const t = document.getElementById('toast');
+            t.textContent = msg;
+            t.className = 'toast' + (type ? ' ' + type : '') + ' show';
+            setTimeout(() => t.classList.remove('show'), 2800);
+        }
+
+        /* ════════ UTILS ════════ */
+        function esc(s) { return (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+
+        /* ════════ CLOSE CONFIRM ON OVERLAY CLICK ════════ */
+        document.getElementById('confirm-overlay').addEventListener('click', e => {
+            if (e.target === document.getElementById('confirm-overlay')) closeConfirm();
+        });
+
+        /* ════════ INIT ════════ */
+        renderList();
+    </script>
+}

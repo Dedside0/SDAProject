@@ -2,7 +2,7 @@
 
 namespace SDA.Db.Repositories
 {
-    internal interface ITicketRepository
+    public interface ITicketRepository
     {
         Task Create(Ticket ticket);
         List<Ticket>? GetAll();

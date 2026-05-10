@@ -1,13 +1,16 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using SDA.Db.Repositories;
+using SDA.Web;
 
 namespace SDAProject.Controllers
 {
-    public class ExamController(ICardRepo) : Controller
+    public class ExamController(ITicketRepository ticketRepository, IQuestionRepository questionRepository) : Controller
     {
         
         public IActionResult Index()
         {
-            return View();
+            var ticket = TestDataGenerator.GenerateTestTicket();
+            return View(ticket);
         }
 
         

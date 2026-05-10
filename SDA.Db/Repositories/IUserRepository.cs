@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace SDA.Db.Repositories
 {
-    internal interface IUserRepository
+    public interface IUserRepository
     {
     }
 }

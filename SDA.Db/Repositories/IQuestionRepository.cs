@@ -2,7 +2,7 @@
 
 namespace SDA.Db.Repositories
 {
-    internal interface IQuestionRepository
+    public interface IQuestionRepository
     {
         Task Create(Question question);
         List<Question>? GetAll();

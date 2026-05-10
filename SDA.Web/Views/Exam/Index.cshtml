@@ -1,4 +1,9 @@
-﻿<!-- Страница активного теста (по умолчанию) -->
+﻿@using SDA.Db.Models;
+@using System.Text.Json;
+@using System.Text.Json.Serialization
+@model Ticket
+
+<!-- Страница активного теста (по умолчанию) -->
 <div class="content" id="mainContent">
     
     <div id="testPage" class="test-container">
@@ -13,7 +18,21 @@
             <div class="q-counter" id="questionCounter">1 / 20</div>
         </div>
 
-        <partial name="_Card" />
+        
+
+        <div id="quizMainArea">
+            <!-- динамическая карточка вопроса -->
+            <div class="question-card" id="questionCard">
+                <div id="imageContainer"></div>
+                <div class="q-text" id="questionText"></div>
+                <ul class="answers-list" id="answersList"></ul>
+            </div>
+        </div>
+
+
+
+
+
 
         <div class="test-nav">
             <button class="btn-secondary" id="prevQuestionBtn">◀ Назад</button>
@@ -27,306 +46,214 @@
 </div>
 
 @section Scripts {
-    <script>
-// ---------- БАЗА ВОПРОСОВ ПДД (20 шт) с картинками (симуляция) ----------
-const QUESTIONS = [];
-// Генератор реалистичных вопросов ПДД
-const topics = [
-{ text: "В каком случае разрешено выполнить обгон на перекрестке?", opts: ["На главной дороге", "На регулируемом перекрестке", "Только при отсутствии знаков", "Запрещено всегда"], correct: 1 },
-{ text: "Что означает мигание зеленого сигнала светофора?", opts: ["Предупреждение о скором выключении", "Разрешает движение", "Запрещает движение", "Требует остановки"], correct: 0 },
-{ text: "Разрешен ли разворот на мосту?", opts: ["Да, всегда", "Нет, запрещён", "Только при отсутствии знака", "Только в светлое время"], correct: 1 },
-{ text: "Какой знак запрещает движение всех транспортных средств?", opts: ["Кирпич", "Движение запрещено", "Стоп", "Обгон запрещён"], correct: 1 },
-{ text: "Что такое тормозной путь?", opts: ["Расстояние от начала торможения до полной остановки", "Время реакции", "Дистанция до препятствия", "Скорость авто"], correct: 0 },
-{ text: "При повороте направо вы обязаны уступить дорогу:", opts: ["Пешеходам, переходящим проезжую часть", "Автобусам", "Трамваю попутного направления", "Велосипедистам"], correct: 0 },
-{ text: "Допустимая максимальная скорость в населенном пункте:", opts: ["40 км/ч", "60 км/ч", "80 км/ч", "90 км/ч"], correct: 1 },
-{ text: "Что означает знак 'Главная дорога'?", opts: ["Приоритет перед пересекаемой", "Запрет стоянки", "Начало населенного пункта", "Скоростное шоссе"], correct: 0 },
-{ text: "Какое наказание за управление в нетрезвом виде?", opts: ["Штраф 5000", "Лишение прав", "Предупреждение", "Штраф 30000 и лишение"], correct: 3 },
-{ text: "Когда следует включать аварийную сигнализацию?", opts: ["При вынужденной остановке", "При ослеплении фарами", "При буксировке", "Во всех случаях"], correct: 3 },
-{ text: "Что такое безопасная дистанция?", opts: ["Расстояние до впереди идущего", "Время 2 секунды", "половина скорости", "Не менее 50 м"], correct: 1 },
-{ text: "Запрещается ли обгон на пешеходном переходе?", opts: ["Да, запрещён", "Только если есть пешеходы", "Разрешен", "Разрешен без встречки"], correct: 0 },
-{ text: "Как обозначается учебное транспортное средство?", opts: ["Знак 'У'", "Желтый цвет", "Мигающий маячок", "Наклейка '70'"], correct: 0 },
-{ text: "Водитель обязан уступить дорогу слепому пешеходу?", opts: ["Да", "Нет", "Только на переходах", "Если есть трость"], correct: 0 },
-{ text: "Что такое 'Остановка'?", opts: ["Прекращение движения до 5 мин", "До 15 мин для посадки", "Плановый перерыв", "Стоянка"], correct: 1 },
-{ text: "Разрешено ли водить автомобиль без ОСАГО?", opts: ["Да", "Нет, запрещено", "Только в экстренных случаях", "Только на такси"], correct: 1 },
-{ text: "Какой знак предписывает движение прямо?", opts: ["Круглый синий со стрелкой", "Треугольный", "Прямоугольный", "Знак 4.1.1"], correct: 0 },
-{ text: "При ДТП первое действие водителя?", opts: ["Включить аварийку", "Вызвать ГИБДД", "Убрать авто", "Сфотографировать"], correct: 0 },
-{ text: "Что обозначает красный сигнал светофора?", opts: ["Запрещает движение", "Разрешает", "Приготовиться", "Уступить дорогу"], correct: 0 },
-{ text: "Зимой шипованная резина обязательна?", opts: ["Только в определенных регионах", "Да", "Нет, по желанию", "Только для грузовиков"], correct: 1 }
-];
-// добавим картинки для демонстрации (разные)
-for (let i = 0; i < 20; i++) {
-let topic = topics[i % topics.length];
-let hasImage = (i % 3 !== 0); // большинство вопросов имеют картинку
-QUESTIONS.push({
-id: i,
-text: topic.text,
-options: [...topic.opts],
-correctIndex: topic.correct,
-imageUrl: hasImage ? `https://picsum.photos/id/${200 + i}/300/150?grayscale` : null,
-explanation: "Пояснение: Следуйте ПДД РФ."
-});
-}
-// подкорректируем некоторые детали (уникальность)
-QUESTIONS[5].text = "При повороте направо на перекрестке вы обязаны уступить дорогу:";
-QUESTIONS[5].options = ["Пешеходам", "Велосипедистам", "Трамваю", "Всем перечисленным"];
-QUESTIONS[5].correctIndex = 0;
-QUESTIONS[10].text = "Что означает термин 'Обгон'?";
-QUESTIONS[10].options = ["Опережение с выездом на встречку","Опережение без выезда","Движение рядом","Перестроение"];
-QUESTIONS[10].correctIndex = 0;
-  
-// ---- состояние теста ----
-let currentQuestionIndex = 0;        // 0-index
-let userAnswers = new Array(20).fill(null);   // null - нет ответа, храним индекс выбранного ответа
-let testActive = true;
-let timerInterval = null;
-let timeSeconds = 20 * 60;  // 20 минут = 1200 секунд
-let examFinished = false;
-let isSubmitted = false;
-  
-// Элементы DOM
-const testPage = document.getElementById('testPage');
-const statsPageDiv = document.getElementById('statsPage');
-const ticketLabel = document.getElementById('ticketNumberLabel');
-const timerDisplay = document.getElementById('timerDisplay');
-const progressFill = document.getElementById('progressFill');
-const questionCounterSpan = document.getElementById('questionCounter');
-const questionText = document.getElementById('questionText');
-const answersList = document.getElementById('answersList');
-const imageContainer = document.getElementById('imageContainer');
-const dotsContainer = document.getElementById('dotsContainer');
-const prevBtn = document.getElementById('prevQuestionBtn');
-const nextBtn = document.getElementById('nextQuestionBtn');
-const submitBtn = document.getElementById('submitExamBtn');
-  
-// helper обновить таймер
-function updateTimerUI() {
-let mins = Math.floor(timeSeconds / 60);
-let secs = timeSeconds % 60;
-timerDisplay.innerText = `${mins.toString().padStart(2,'0')}:${secs.toString().padStart(2,'0')}`;
-if (timeSeconds <= 60) timerDisplay.classList.add('danger');
-else timerDisplay.classList.remove('danger');
-}
-  
-function stopTimer() {
-if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
-}
-  
-function startTimer() {
-if (timerInterval) stopTimer();
-timerInterval = setInterval(() => {
-if (!testActive || examFinished || isSubmitted) return;
-if (timeSeconds <= 0) {
-// время вышло -> автоматическая сдача
-stopTimer();
-if (!examFinished && !isSubmitted) {
-alert("Время вышло! Экзамен завершается.");
-finishExam();
-}
-} else {
-timeSeconds--;
-updateTimerUI();
-}
-}, 1000);
-}
-  
-// отрисовка точек навигации
-function renderDots() {
-dotsContainer.innerHTML = '';
-for (let i = 0; i < 20; i++) {
-const dot = document.createElement('div');
-dot.className = 'q-dot';
-if (userAnswers[i] !== null) dot.classList.add('answered');
-if (i === currentQuestionIndex) dot.classList.add('current');
-dot.innerText = i+1;
-dot.addEventListener('click', () => {
-if (examFinished || isSubmitted) return;
-currentQuestionIndex = i;
-renderCurrentQuestion();
-updateProgressUI();
-renderDots();
-});
-dotsContainer.appendChild(dot);
-}
-}
-  
-function updateProgressUI() {
-const answeredCount = userAnswers.filter(a => a !== null).length;
-const percent = (answeredCount / 20) * 100;
-progressFill.style.width = `${percent}%`;
-questionCounterSpan.innerText = `${currentQuestionIndex+1} / 20`;
-}
-  
-function renderCurrentQuestion() {
-const q = QUESTIONS[currentQuestionIndex];
-if (!q) return;
-questionText.innerText = `${currentQuestionIndex+1}. ${q.text}`;
-// картинка
-imageContainer.innerHTML = '';
-if (q.imageUrl) {
-const img = document.createElement('img');
-img.src = q.imageUrl;
-img.className = 'q-image';
-img.alt = "иллюстрация ПДД";
-imageContainer.appendChild(img);
-} else {
-const placeholder = document.createElement('div');
-placeholder.className = 'q-image-placeholder';
-placeholder.innerText = '🚗 Нет изображения';
-imageContainer.appendChild(placeholder);
-}
-// варианты
-answersList.innerHTML = '';
-const selectedIdx = userAnswers[currentQuestionIndex];
-const letters = ['А', 'Б', 'В', 'Г'];
-q.options.forEach((opt, idx) => {
-const li = document.createElement('li');
-li.className = 'answer-item';
-if (selectedIdx !== null && selectedIdx === idx) li.classList.add('selected');
-if (examFinished || isSubmitted) li.classList.add('disabled');
-const letterSpan = document.createElement('span');
-letterSpan.className = 'answer-letter';
-letterSpan.innerText = letters[idx];
-const textSpan = document.createElement('span');
-textSpan.className = 'answer-text';
-textSpan.innerText = opt;
-li.appendChild(letterSpan);
-li.appendChild(textSpan);
-if (!examFinished && !isSubmitted) {
-li.addEventListener('click', () => {
-if (examFinished || isSubmitted) return;
-// сохраняем ответ
-userAnswers[currentQuestionIndex] = idx;
-renderCurrentQuestion();  // перерисовать с подсветкой выбранного
-updateProgressUI();
-renderDots();
-// опционально авто-переход? нет, вручную.
-});
-}
-answersList.appendChild(li);
-});
-updateProgressUI();
-}
-  
-function finishExam() {
-if (examFinished || isSubmitted) return;
-examFinished = true;
-isSubmitted = true;
-stopTimer();
-testActive = false;
-// подсчет правильных
-let correctCount = 0;
-for (let i = 0; i < 20; i++) {
-const answerIdx = userAnswers[i];
-if (answerIdx !== null && answerIdx === QUESTIONS[i].correctIndex) correctCount++;
-}
-const percent = Math.round((correctCount / 20) * 100);
-const passed = percent >= 80;
-// сохраняем сессию в localStorage
-const session = { date: new Date().toLocaleString(), correct: correctCount, total: 20, percent: percent, passed: passed };
-let history = JSON.parse(localStorage.getItem('pdd_exam_history') || '[]');
-history.unshift(session);
-localStorage.setItem('pdd_exam_history', JSON.stringify(history));
-// показать результат вместо карточки? очистим основной контент теста
-const quizArea = document.getElementById('quizMainArea');
-const oldCard = document.getElementById('questionCard');
-if (oldCard) oldCard.style.display = 'none';
-const resultHtml = `
-<div class="result-panel">
-<div class="result-icon">${passed ? '🏆🎉' : '📘📖'}</div>
-<h2>${passed ? 'Экзамен сдан!' : 'Экзамен не сдан'}</h2>
-<p>Правильных ответов: ${correctCount} из 20 (${percent}%)</p>
-<div class="result-stats"><div><span>${correctCount}</span><small>Верно</small></div><div><span>${20-correctCount}</span><small>Ошибки</small></div></div>
-<div class="action-group"><button class="btn-primary" id="restartExamBtn">🔄 Пройти заново</button><button class="btn-secondary" id="homeAfterExamBtn">🏠 Главная</button></div>
-</div>
-`;
-quizArea.innerHTML = resultHtml;
-document.getElementById('restartExamBtn')?.addEventListener('click', () => location.reload());
-document.getElementById('homeAfterExamBtn')?.addEventListener('click', () => location.reload());
-}
-  
-// навигация по вопросам
-function nextQuestion() {
-if (examFinished || isSubmitted) return;
-if (currentQuestionIndex < 19) {
-currentQuestionIndex++;
-renderCurrentQuestion();
-renderDots();
-updateProgressUI();
-} else {
-// если последний, то можно завершить?
-if (confirm("Вы на последнем вопросе. Завершить экзамен?")) finishExam();
-}
-}
-function prevQuestion() {
-if (examFinished || isSubmitted) return;
-if (currentQuestionIndex > 0) {
-currentQuestionIndex--;
-renderCurrentQuestion();
-renderDots();
-updateProgressUI();
-}
-}
-  
-// инициализация теста
-function initTest() {
-currentQuestionIndex = 0;
-userAnswers.fill(null);
-testActive = true;
-examFinished = false;
-isSubmitted = false;
-timeSeconds = 20 * 60;
-updateTimerUI();
-stopTimer();
-startTimer();
-renderCurrentQuestion();
-renderDots();
-updateProgressUI();
-const quizArea = document.getElementById('quizMainArea');
-// восстановим если был ранее заменен на result
-if (quizArea.querySelector('.result-panel')) {
-// hard reset reload? но проще пересоздать карточку
-location.reload();
-return;
-}
-const card = document.getElementById('questionCard');
-if (card) card.style.display = 'block';
-}
-  
-// статистика
-function renderStats() {
-const history = JSON.parse(localStorage.getItem('pdd_exam_history') || '[]');
-const totalAttempts = history.length;
-const bestPercent = history.length ? Math.max(...history.map(s => s.percent)) : 0;
-document.getElementById('totalAttemptsStat').innerText = totalAttempts;
-document.getElementById('bestPercentStat').innerText = `${bestPercent}%`;
-if (totalAttempts === 0) {
-document.getElementById('statsEmptyMsg').classList.remove('hidden');
-document.getElementById('statsTableWrap').classList.add('hidden');
-} else {
-document.getElementById('statsEmptyMsg').classList.add('hidden');
-document.getElementById('statsTableWrap').classList.remove('hidden');
-const tbody = document.getElementById('historyTableBody');
-tbody.innerHTML = '';
-history.slice(0,10).forEach(s => {
-const tr = document.createElement('tr');
-tr.innerHTML = `<td>${s.date}</td><td>${s.correct}/${s.total}</td><td class="${s.passed ? 'tag-pass' : 'tag-fail'}">${s.passed ? 'Сдал' : 'Провал'}</td>`;
-tbody.appendChild(tr);
-});
-}
-}
-  
-// навигация по страницам (тест / статистика)
-const navLinks = document.querySelectorAll('.nav-link');
-function showPage(pageId) {
-document.getElementById('testPage').style.display = pageId === 'test' ? 'block' : 'none';
-document.getElementById('statsPage').style.display = pageId === 'stats' ? 'block' : 'none';
-if (pageId === 'stats') renderStats();
-navLinks.forEach(link => link.classList.remove('active'));
-document.querySelector(`[data-nav="${pageId}"]`).classList.add('active');
-}
-document.querySelector('[data-nav="test"]').addEventListener('click', (e) => { e.preventDefault(); showPage('test'); });
-document.querySelector('[data-nav="stats"]').addEventListener('click', (e) => { e.preventDefault(); showPage('stats'); renderStats(); });
+<script>
+const ticket = @Html.Raw(JsonSerializer.Serialize(Model, new JsonSerializerOptions {
+    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+    ReferenceHandler = ReferenceHandler.IgnoreCycles
+}));
 
-  
+const $ = id => document.getElementById(id);
+
+const els = {
+    timer: $("timerDisplay"),
+    progress: $("progressFill"),
+    counter: $("questionCounter"),
+    question: $("questionText"),
+    answers: $("answersList"),
+    image: $("imageContainer"),
+    dots: $("dotsContainer"),
+    ticket: $("ticketNumberLabel"),
+    quiz: $("quizMainArea")
+};
+
+const questions = [...(ticket.ticketQuestions || [])]
+    .sort((a,b) => a.order - b.order)
+    .map(x => x.question);
+
+let index = 0;
+let time = 20 * 60;
+let finished = false;
+let timer;
+const answers = Array(questions.length).fill(null);
+
+els.ticket.textContent = ticket.name || "Билет";
+
+function allAnswered() {
+    return answers.every(a => a !== null);
+}
+
+function render() {
+    const q = questions[index];
+    const selected = answers[index];
+
+    els.question.textContent = `${index + 1}. ${q.text}`;
+
+    els.image.innerHTML = q.imageUrl
+        ? `<img src="${q.imageUrl}" class="q-image">`
+        : `<div class="q-image-placeholder">🚗 Нет изображения</div>`;
+
+    els.answers.innerHTML = q.answers.map((a, i) => `
+        <li class="answer-item ${selected === i ? "selected" : ""}"
+            onclick="selectAnswer(${i})">
+            <span class="answer-letter">${String.fromCharCode(1040 + i)}</span>
+            <span class="answer-text">${a.text}</span>
+        </li>
+    `).join("");
+
+    renderDots();
+    updateProgress();
+    updateNextButton();
+}
+
+function renderDots() {
+    els.dots.innerHTML = questions.map((_, i) => `
+        <div class="q-dot
+            ${i === index ? "current" : ""}
+            ${answers[i] !== null ? "answered" : ""}"
+            onclick="goTo(${i})">
+            ${i + 1}
+        </div>
+    `).join("");
+}
+
+function updateProgress() {
+    const answered = answers.filter(x => x !== null).length;
+
+    els.progress.style.width =
+        `${answered / questions.length * 100}%`;
+
+    els.counter.textContent =
+        `${index + 1} / ${questions.length}`;
+}
+
+function selectAnswer(i) {
+    if (finished) return;
+
+    answers[index] = i;
+    render();
+}
+
+function goTo(i) {
+    if (finished) return;
+    index = i;
+    render();
+}
+
+function next() {
+    if (finished) return;
+
+    if (index < questions.length - 1) {
+        index++;
+        render();
+    } else if (confirm("Завершить экзамен?")) {
+        finish();
+    }
+}
+
+function prev() {
+    if (finished || index === 0) return;
+
+    index--;
+    render();
+}
+
+function updateTimer() {
+    const m = String(Math.floor(time / 60)).padStart(2, "0");
+    const s = String(time % 60).padStart(2, "0");
+
+    els.timer.textContent = `${m}:${s}`;
+    els.timer.classList.toggle("danger", time <= 60);
+}
+
+function startTimer() {
+    updateTimer();
+
+    timer = setInterval(() => {
+        if (finished) return;
+
+        if (time <= 0) {
+            alert("Время вышло");
+            finish();
+            return;
+        }
+
+        time--;
+        updateTimer();
+    }, 1000);
+}
+
+function finish() {
+    finished = true;
+    clearInterval(timer);
+
+    let correct = 0;
+
+    questions.forEach((q, i) => {
+        const right = q.answers.findIndex(a => a.isRight);
+        if (answers[i] === right) correct++;
+    });
+
+    const percent = Math.round(correct / questions.length * 100);
+    const passed = percent >= 80;
+
+    localStorage.setItem(
+        "pdd_exam_history",
+        JSON.stringify([
+            {
+                date: new Date().toLocaleString(),
+                ticket: ticket.name,
+                correct,
+                total: questions.length,
+                percent,
+                passed
+            },
+            ...JSON.parse(localStorage.getItem("pdd_exam_history") || "[]")
+        ])
+    );
+
+    els.quiz.innerHTML = `
+        <div class="result-panel">
+            <div class="result-icon">${passed ? "🏆" : "❌"}</div>
+
+            <h2>
+                ${passed ? "Экзамен сдан!" : "Экзамен не сдан"}
+            </h2>
+
+            <p>
+                ${correct} из ${questions.length} (${percent}%)
+            </p>
+
+            <div class="action-group">
+                <button class="btn-primary"
+                        onclick="location.reload()">
+                    🔄 Заново
+                </button>
+            </div>
+        </div>
+    `;
+}
+
+const nextBtn = $("nextQuestionBtn");
+
+function updateNextButton() {
+
+    const isLastQuestion =
+        index === questions.length - 1;
+
+    nextBtn.disabled =
+        isLastQuestion && !allAnswered();
+}
+
+nextBtn.onclick = next;
+$("prevQuestionBtn").onclick = prev;
+
+$("submitExamBtn").onclick = () => {
+    if (!finished && confirm("Завершить экзамен?")) {
+        finish();
+    }
+};
+
+render();
+startTimer();
 </script>
 }
