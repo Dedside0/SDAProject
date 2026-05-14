@@ -92,13 +92,36 @@ function render() {
         ? `<img src="${q.imageUrl}" class="q-image">`
         : `<div class="q-image-placeholder">🚗 Нет изображения</div>`;
 
-    els.answers.innerHTML = q.answers.map((a, i) => `
-        <li class="answer-item ${selected === i ? "selected" : ""}"
+    els.answers.innerHTML = q.answers.map((a, i) => {
+
+    let cls = "";
+
+    if (selected !== null) {
+
+        if (i === selected) {
+            cls = a.isRight ? "correct" : "wrong";
+        }
+
+        // показываем правильный ответ
+        if (a.isRight) {
+            cls += " show-correct";
+        }
+    }
+
+    return `
+        <li class="answer-item ${cls}"
             onclick="selectAnswer(${i})">
-            <span class="answer-letter">${String.fromCharCode(1040 + i)}</span>
-            <span class="answer-text">${a.text}</span>
+
+            <span class="answer-letter">
+                ${String.fromCharCode(1040 + i)}
+            </span>
+
+            <span class="answer-text">
+                ${a.text}
+            </span>
         </li>
-    `).join("");
+    `;
+}).join("");
 
     renderDots();
     updateProgress();
@@ -127,9 +150,13 @@ function updateProgress() {
 }
 
 function selectAnswer(i) {
+
     if (finished) return;
 
+    if (answers[index] !== null) return;
+
     answers[index] = i;
+
     render();
 }
 

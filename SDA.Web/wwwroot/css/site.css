@@ -217,6 +217,19 @@ body {
     }
 }
 
+.answer-item.correct,
+.answer-item.show-correct {
+    background: #1f8b4c;
+    border-color: #1f8b4c;
+    color: white;
+}
+
+.answer-item.wrong {
+    background: #c62828;
+    border-color: #c62828;
+    color: white;
+}
+
 /* ─── PAGE HEADER ─── */
 .page-header {
     display: flex;
