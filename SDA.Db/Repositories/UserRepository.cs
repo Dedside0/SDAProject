@@ -8,8 +8,11 @@ using System.Threading.Tasks;
 
 namespace SDA.Db.Repositories
 {
-    internal class UserRepository: IUserRepository
+    internal class UserRepository : IUserRepository
     {
-        
+        public void QuestionAnswered()
+        {
+            throw new NotImplementedException();
+        }
     }
 }

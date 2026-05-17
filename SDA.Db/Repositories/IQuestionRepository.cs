@@ -6,7 +6,7 @@ namespace SDA.Db.Repositories
     {
         Task Create(Question question);
         List<Question>? GetAll();
-        Task<Question?> GetById(Guid id);
+        Question? GetById(Guid id);
         Task Update(Question question);
     }
 }

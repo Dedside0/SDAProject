@@ -1,0 +1,142 @@
+﻿@model TicketVm
+
+<main class="editor-panel" id="editor-panel">
+    @if (Model is null)
+    {
+
+        <div class="empty-editor" id="empty-editor" style="display: none;">
+            <div class="empty-glyph">№</div>
+            <h2>Выберите билет</h2>
+            <p>Нажмите на любой билет слева, чтобы начать редактирование</p>
+        </div>
+    }
+    else
+    {
+        <div id="ticket-editor" style="display: block;">
+            <div class="editor-top">
+                <div class="editor-top-left">
+                    <div class="editor-label">Название билета</div>
+                    <input class="ticket-title-input" type="text" value="@Model.Name" placeholder="Введите название…"
+                           oninput="patchTicket('name', this.value)">
+                </div>
+                <div class="editor-actions">
+                    <button class="btn-danger" onclick="confirmDeleteTicket(1)">🗑 Удалить</button>
+                    <button class="btn-primary" onclick="saveCurrentTicket()">💾 Сохранить</button>
+                </div>
+            </div>
+
+            <div class="meta-row">
+                <div class="meta-field">
+                    <label>Категория</label>
+                    <input class="meta-input" type="text" value="Базовый" oninput="patchTicket('category',this.value)">
+                </div>
+                <div class="meta-field">
+                    <label>Сложность</label>
+                    <select class="meta-select" onchange="patchTicket('difficulty',this.value)">
+                        <option selected="">Лёгкий</option>
+                        <option>Средний</option>
+                        <option>Трудный</option>
+                    </select>
+                </div>
+                <div class="meta-field">
+                    <label>ID билета</label>
+                    <input class="meta-input" type="text" value="1" disabled="" style="opacity:.4;cursor:default">
+                </div>
+                <div class="meta-field" style="grid-column:1/-1">
+                    <label>Описание</label>
+                    <textarea class="meta-input" rows="2"
+                              oninput="patchTicket('description',this.value)">Основные понятия и термины Правил дорожного движения.</textarea>
+                </div>
+            </div>
+
+            <div class="section-head">
+                <div class="section-title">Вопросы (@Model.TicketQuestions.Count())</div>
+                <button class="add-q-btn" onclick="addQuestion(1)">＋ Добавить вопрос</button>
+            </div>
+
+            <div id="questions-container">
+                @foreach (var ticketq in Model.TicketQuestions)
+                {
+                    <div class="q-card" id="@ticketq.Question.Id">
+                        <div class="q-card-head" onclick="toggleQuestion(@ticketq.Question.Id)">
+                            <div class="q-index">01</div>
+                            <div class="q-preview" id="qprev-@ticketq.Question.Id">
+                                @ticketq.Question.Text
+                            </div>
+                            <div class="q-expand-icon">▾</div>
+                        </div>
+                        <div class="q-card-body">
+                            <div class="field-group">
+                                <label>Текст вопроса</label>
+                                <textarea class="field-input" rows="3"
+                                          oninput="patchQuestion(1,101,'text',this.value);
+                                document.getElementById('qprev-@ticketq.Question.Id').textContent=this.value||'Без текста'">@ticketq.Question.Text</textarea>
+                            </div>
+                            <div class="field-group">
+                                <label>Изображение (опционально)</label>
+                                <div class="img-stub"
+                                     onclick="alert('Здесь будет загрузка изображения — подключите к ASP.NET')">
+                                    <div class="img-stub-icon">🖼</div>
+                                    <span>Нажмите, чтобы добавить изображение</span>
+                                </div>
+                            </div>
+                            <div class="field-group">
+                                <div class="answers-label">Варианты ответов</div>
+                                @foreach (var ans in ticketq.Question.Answers)
+                                {
+
+
+                                    <div id="answers-@ticketq.Question.Id">
+
+                                        <div class="answer-row" id="arow-@ticketq.Question.Id-0">
+                                            <div class="ans-letter-badge">А</div>
+                                            <input class="ans-text-input" type="text" value="@ans.Text"
+                                                   placeholder="Вариант ответа…"
+                                                   oninput="patchAnswer(1,101,@(ticketq.Order - 1),'text',this.value)">
+                                            <label class="correct-toggle" title="Правильный ответ">
+                                                <input type="checkbox"
+                                                       onchange="patchAnswer(1,101,@(ticketq.Order - 1),'correct',this.checked)">
+                                                <div class="ct-box">✓</div>
+                                                <span class="ct-label">Верный</span>
+                                            </label>
+                                            <button class="del-ans-btn" title="Удалить"
+                                                    onclick="deleteAnswer(1,101,@(ticketq.Order - 1)">
+                                                ✕
+                                            </button>
+                                        </div>
+
+
+                                    </div>
+                                }
+                                <button class="add-ans-btn" onclick="addAnswer(1,@ticketq.Question.Id)">＋ Добавить вариант</button>
+                            </div>
+                            <div class="field-group">
+                                <button class="hint-toggle-btn" onclick="toggleHint(@ticketq.Question.Id)">
+                                    ✎ Редактировать подсказку
+                                </button>
+                                <div class="hint-field" id="hint-field-@ticketq.Question.Id" style="">
+                                    <label style="font-size:.68rem;text-transform:uppercase;letter-spacing:.1em;color:var(--text-muted);display:block;margin-bottom:.35rem;margin-top:.5rem">
+                                        Подсказка
+                                        / объяснение
+                                    </label>
+                                    <textarea class="field-input" rows="2" oninput="patchQuestion(1,@ticketq.Question.Id,'hint',this.value)">
+                                    @ticketq.Question.Exploration</textarea>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="q-card-foot">
+                            <div class="q-move-btns">
+                                <button class="move-btn" title="Вверх" onclick="moveQuestion(1,@ticketq.Question.Id,-1)">↑</button>
+                                <button class="move-btn" title="Вниз" onclick="moveQuestion(1,@ticketq.Question.Id,+1)">↓</button>
+                            </div>
+                            <button class="del-q-btn" onclick="confirmDeleteQuestion(1,@ticketq.Question.Id)">✕ Удалить вопрос</button>
+                        </div>
+                    </div>
+
+                }
+
+            </div>
+        </div>
+
+    }
+</main>

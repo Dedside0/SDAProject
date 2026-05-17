@@ -1,25 +1,23 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using SDA.Db.Models;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace SDA.Db.Repositories
 {
     internal class QuestionRepository(AppContext dbContext) : IQuestionRepository
     {
-        public List<Question>? GetAll() => dbContext.Questions.ToList();
+        public List<Question>? GetAll() => dbContext.Questions
+            .AsNoTracking()
+            .Include(x=>x.Answers)
+            .ToList();
 
-        public async Task<Question?> GetById(Guid id) =>
-            await dbContext.Questions.AsNoTracking()
-            .Include(x => x.Answers)
-            .FirstOrDefaultAsync(q => q.Id == id);
+        public Question? GetById(Guid id) => dbContext.Questions
+            .AsNoTracking()
+            .Include(x=>x.Answers)
+            .FirstOrDefault(x=>x.Id==id);
 
         public async Task Create(Question question)
         {
-            if (await GetById(question.Id) is not null)
+            if ( GetById(question.Id) is not null)
             {
                 await Update(question);
                 return;
@@ -31,7 +29,7 @@ namespace SDA.Db.Repositories
 
         public async Task Update(Question question)
         {
-            var existingQuestion = await GetById(question.Id);
+            var existingQuestion = GetById(question.Id);
 
             if (existingQuestion == null)
             {

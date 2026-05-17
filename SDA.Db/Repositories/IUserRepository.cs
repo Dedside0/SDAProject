@@ -8,5 +8,6 @@ namespace SDA.Db.Repositories
 {
     public interface IUserRepository
     {
+        public void QuestionAnswered();
     }
 }

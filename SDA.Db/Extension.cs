@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using SDA.Db.Repositories;
 
 namespace SDA.Db
@@ -9,13 +10,14 @@ namespace SDA.Db
         {
             services.AddScoped<IUserRepository, UserRepository>();
             services.AddScoped<ITicketRepository, TicketRepository>();
-            services.AddScoped<IQuestionRepository,QuestionRepository>();
+            services.AddScoped<IQuestionRepository, QuestionRepository>();
             return services;
         }
 
         public static IServiceCollection AddDataBase(this IServiceCollection services)
         {
-            services.AddDbContext<AppContext>();
+            services.AddDbContext<AppContext>(options =>
+    options.UseSqlite("Data Source=database.db"));
             return services;
         }
     }
