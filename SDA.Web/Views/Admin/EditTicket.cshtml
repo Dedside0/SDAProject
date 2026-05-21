@@ -13,7 +13,7 @@
         <div class="nav-logo">🚦 Администрирование</div>
     </nav>
     <div class="layout">
-
+        @Html.AntiForgeryToken()
         <!-- ═══ LEFT: TICKET LIST ═══ -->
         <aside class="list-panel">
             <div class="list-header">
@@ -211,14 +211,20 @@
                                      document.getElementById('qprev-${q.id}').textContent=this.value||'Без текста'"
                             >${esc(q.text)}</textarea>
                     </div>
-                    <div class="field-group">
-                        <label>Изображение (опционально)</label>
-                        <div class="img-stub" onclick="handleImageUpload('${tid}','${q.id}',this)">
-                            <div class="img-stub-icon">🖼</div>
-                            <span id="img-label-${q.id}">${q.imageUrl ? 'Изменить изображение' : 'Нажмите, чтобы добавить изображение'}</span>
-                        </div>
-                        ${q.imageUrl ? `<img src="${esc(q.imageUrl)}" style="max-height:120px;margin-top:8px;border-radius:6px" alt=""/>` : ''}
-                    </div>
+                   <div class="field-group">
+    <label>Изображение (опционально)</label>
+    <input type="file" accept="image/*" id="file-input-${q.id}" style="display:none"
+        onchange="uploadImage('${tid}','${q.id}',this)" />
+    <div class="img-stub" onclick="document.getElementById('file-input-${q.id}').click()">
+        <div class="img-stub-icon" id="img-icon-${q.id}">🖼</div>
+        <span id="img-label-${q.id}">${q.imageUrl ? 'Изменить изображение' : 'Нажмите, чтобы добавить'}</span>
+    </div>
+    <div id="img-preview-${q.id}" style="${q.imageUrl ? '' : 'display:none'}">
+        <img src="${q.imageUrl || ''}" style="max-height:120px;margin-top:8px;border-radius:6px;display:block" />
+        <button class="del-ans-btn" style="margin-top:6px" onclick="removeImage('${tid}','${q.id}')">✕ Удалить
+            изображение</button>
+    </div>
+</div>
                     <div class="field-group">
                         <div class="answers-label">Варианты ответов</div>
                         <div id="answers-${q.id}">
@@ -279,11 +285,62 @@
         if (f) f.style.display = f.style.display === 'none' ? 'block' : 'none';
     }
 
-    /* ════════ IMAGE UPLOAD (заглушка) ════════ */
-    function handleImageUpload(tid, qid, el) {
-        // TODO: подключить реальную загрузку через endpoint /api/questions/{qid}/image
-        showToast('Загрузка изображений будет доступна после подключения endpoint-а', 'error');
+    /* ════════ IMAGE UPLOAD  ════════ */
+    async function uploadImage(tid, qid, input) {
+    const file = input.files[0];
+    if (!file) return;
+
+    const token = document.querySelector('input[name="__RequestVerificationToken"]').value;
+
+
+    document.getElementById('img-label-' + qid).textContent = 'Загрузка…';
+    document.getElementById('img-icon-'  + qid).textContent = '⏳';
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+        const resp = await fetch('/Admin/UploadImage', {
+            method: 'POST',
+            headers: { 'RequestVerificationToken': token },
+            body: formData
+        });
+
+        if (!resp.ok) {
+            const err = await resp.text();
+            throw new Error(err);
+        }
+
+        const { url } = await resp.json();
+
+        // Обновляем данные в массиве
+        patchQuestion(tid, qid, 'imageUrl', url);
+
+        // Обновляем превью
+        const preview = document.getElementById('img-preview-' + qid);
+        preview.querySelector('img').src = url;
+        preview.style.display = '';
+
+        document.getElementById('img-label-' + qid).textContent = 'Изменить изображение';
+        document.getElementById('img-icon-'  + qid).textContent = '🖼';
+
+        showToast('Изображение загружено ✓');
+    } catch (err) {
+        document.getElementById('img-label-' + qid).textContent = 'Нажмите, чтобы добавить';
+        document.getElementById('img-icon-'  + qid).textContent = '🖼';
+        showToast('Ошибка загрузки: ' + err.message, 'error');
     }
+
+    // Сбрасываем input чтобы можно было загрузить тот же файл повторно
+    input.value = '';
+}
+
+function removeImage(tid, qid) {
+    patchQuestion(tid, qid, 'imageUrl', null);
+    const preview = document.getElementById('img-preview-' + qid);
+    if (preview) preview.style.display = 'none';
+    document.getElementById('img-label-' + qid).textContent = 'Нажмите, чтобы добавить';
+}
 
     /* ════════ PATCH HELPERS ════════ */
     function patchTicket(key, val) {
@@ -414,7 +471,7 @@
             `Билет «${t.name}» и все его вопросы будут удалены. Это действие нельзя отменить.`;
         confirmCallback = async () => {
             try {
-                const resp = await fetch(`/api/tickets/${id}`, { method: 'DELETE' });
+                const resp = await fetch(`/Admin/Delete/${id}`, { method: 'DELETE' });
                 if (!resp.ok) throw new Error('Ошибка сервера');
                 tickets = tickets.filter(x => x.id !== id);
                 activeTicketId = null;
@@ -495,10 +552,13 @@
     const method = isNew ? 'POST' : 'PUT';
 
     try {
+        const token = document.querySelector('input[name="__RequestVerificationToken"]').value;
         const resp = await fetch(url, {
             method,
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
+            headers: { 'Content-Type': 'application/json',
+            'RequestVerificationToken': token
+            },
+            body: JSON.stringify(payload)   
         });
 
         if (!resp.ok) throw new Error('Ошибка сервера: ' + resp.status);

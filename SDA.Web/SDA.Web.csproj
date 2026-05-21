@@ -10,4 +10,8 @@
     <ProjectReference Include="..\SDA.Db\SDA.Db.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="wwwroot\images\uploads\questions\" />
+  </ItemGroup>
+
 </Project>

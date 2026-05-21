@@ -6,7 +6,7 @@ using SDA.Web.Models.DTO;
 
 namespace SDA.Web.Controllers
 {
-    public class AdminController(ITicketRepository ticketRepository) : Controller
+    public class AdminController(ITicketRepository ticketRepository, IWebHostEnvironment _env) : Controller
     {
         public async Task<IActionResult> EditTicket()
         {
@@ -35,6 +35,7 @@ namespace SDA.Web.Controllers
             return View(temp);
         }
 
+        [ValidateAntiForgeryToken]
         [HttpPost]
         public IActionResult CreateTicket([FromBody] SaveTicketDto dto)
         {
@@ -83,6 +84,7 @@ namespace SDA.Web.Controllers
             }
         }
 
+        [ValidateAntiForgeryToken]
         [HttpPut]
         public async Task<IActionResult> UpdateTicket([FromBody] SaveTicketDto dto)
         {
@@ -101,6 +103,7 @@ namespace SDA.Web.Controllers
                 {
                     var question = new Question
                     {
+                        
                         Id = tqDto.QuestionId,
                         Text = tqDto.Text,
                         ImageUrl = tqDto.ImageUrl,
@@ -131,7 +134,34 @@ namespace SDA.Web.Controllers
             {
                 return BadRequest();
             }
-        }
+            }
 
+
+        [ValidateAntiForgeryToken]
+        [HttpPost]
+        public async Task<IActionResult> UploadImage(IFormFile file)
+        {
+            if (file == null || file.Length == 0)
+                return BadRequest("Файл не выбран");
+
+            
+            var allowed = new[] { "image/jpeg", "image/png", "image/webp", "image/gif" };
+            if (!allowed.Contains(file.ContentType))
+                return BadRequest("Недопустимый формат файла");
+
+            
+            if (file.Length > 10 * 1024 * 1024)
+                return BadRequest("Файл слишком большой (максимум 5 МБ)");
+
+            var fileName = Guid.NewGuid() + Path.GetExtension(file.FileName);
+            var folder = Path.Combine(_env.WebRootPath, "images", "uploads", "questions");
+
+            var fullPath = Path.Combine(folder, fileName);
+            using (var stream = new FileStream(fullPath, FileMode.Create))
+                await file.CopyToAsync(stream);
+
+            var url = $"/uploads/questions/{fileName}";
+            return Ok(new { url });
+        }
     }
 }

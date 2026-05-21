@@ -148,11 +148,13 @@ async function handleAnswerClick(e) {
   const questionId = questions[index].id;
 
   try {
+      const token = document.querySelector('input[name="__RequestVerificationToken"]').value;
 
     const response = await fetch('/Exam/CheckQuestion', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'RequestVerificationToken': token
       },
       body: JSON.stringify({
         QuestionId: questionId,
