@@ -1,4 +1,6 @@
-﻿@model TicketVm
+﻿@using SDA.Db.Models
+
+@model Ticket
 
 <main class="editor-panel" id="editor-panel">
     @if (Model is null)
@@ -28,7 +30,7 @@
             <div class="meta-row">
                 <div class="meta-field">
                     <label>Категория</label>
-                    <input class="meta-input" type="text" value="Базовый" oninput="patchTicket('category',this.value)">
+                    <input class="meta-input" type="text" value="@Model.Difficulty" oninput="patchTicket('category',this.value)">
                 </div>
                 <div class="meta-field">
                     <label>Сложность</label>
@@ -45,7 +47,7 @@
                 <div class="meta-field" style="grid-column:1/-1">
                     <label>Описание</label>
                     <textarea class="meta-input" rows="2"
-                              oninput="patchTicket('description',this.value)">Основные понятия и термины Правил дорожного движения.</textarea>
+                              oninput="patchTicket('description',this.value)">@Model.Description</textarea>
                 </div>
             </div>
 
@@ -55,84 +57,89 @@
             </div>
 
             <div id="questions-container">
-                @foreach (var ticketq in Model.TicketQuestions)
+
+                @foreach (var ticketq in Model.TicketQuestions.OrderBy(tq => tq.Order))
                 {
-                    <div class="q-card" id="@ticketq.Question.Id">
-                        <div class="q-card-head" onclick="toggleQuestion(@ticketq.Question.Id)">
-                            <div class="q-index">01</div>
-                            <div class="q-preview" id="qprev-@ticketq.Question.Id">
-                                @ticketq.Question.Text
-                            </div>
+                    var q = ticketq.Question;
+                    var orderIndex = Model.TicketQuestions.ToList().IndexOf(ticketq);
+    
+                    <div class="q-card" id="qcard-@q.Id">
+                        <div class="q-card-head" onclick="toggleQuestion('@q.Id')">
+                            <div class="q-index">@(orderIndex + 1).ToString("00")</div>
+                            <div class="q-preview" id="qprev-@q.Id">@(string.IsNullOrEmpty(q.Text) ? "Без текста" : q.Text)</div>
                             <div class="q-expand-icon">▾</div>
                         </div>
+        
                         <div class="q-card-body">
                             <div class="field-group">
                                 <label>Текст вопроса</label>
                                 <textarea class="field-input" rows="3"
-                                          oninput="patchQuestion(1,101,'text',this.value);
-                                document.getElementById('qprev-@ticketq.Question.Id').textContent=this.value||'Без текста'">@ticketq.Question.Text</textarea>
+                                          oninput="patchQuestion('@Model.Id', '@q.Id', 'text', this.value); document.getElementById('qprev-@q.Id').textContent = this.value || 'Без текста'">@Html.Raw(q.Text)</textarea>
                             </div>
+            
                             <div class="field-group">
                                 <label>Изображение (опционально)</label>
-                                <div class="img-stub"
-                                     onclick="alert('Здесь будет загрузка изображения — подключите к ASP.NET')">
+                                <div class="img-stub" onclick="uploadImage('@Model.Id', '@q.Id')">
                                     <div class="img-stub-icon">🖼</div>
-                                    <span>Нажмите, чтобы добавить изображение</span>
+                                    <span>@(string.IsNullOrEmpty(q.ImageUrl) ? "Нажмите, чтобы добавить изображение" : "Изменить изображение")</span>
                                 </div>
+                                @if (!string.IsNullOrEmpty(q.ImageUrl))
+                                {
+                                    <div class="image-preview" id="imagePreview-@q.Id">
+                                        <img src="@q.ImageUrl" style="max-width: 200px; margin-top: 10px;" />
+                                        <button type="button" class="remove-image-btn" onclick="removeImage('@Model.Id', '@q.Id')">✕ Удалить</button>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="image-preview" id="imagePreview-@q.Id" style="display: none;"></div>
+                                }
                             </div>
+            
                             <div class="field-group">
                                 <div class="answers-label">Варианты ответов</div>
-                                @foreach (var ans in ticketq.Question.Answers)
-                                {
+                                <div id="answers-@q.Id">
+                                    @foreach (var answer in q.Answers)
+                                    {
+                                        var answerIndex = q.Answers.ToList().IndexOf(answer);
+                                        var letter = ((char)(1040 + answerIndex)).ToString();
 
-
-                                    <div id="answers-@ticketq.Question.Id">
-
-                                        <div class="answer-row" id="arow-@ticketq.Question.Id-0">
-                                            <div class="ans-letter-badge">А</div>
-                                            <input class="ans-text-input" type="text" value="@ans.Text"
-                                                   placeholder="Вариант ответа…"
-                                                   oninput="patchAnswer(1,101,@(ticketq.Order - 1),'text',this.value)">
+                                        <div class="answer-row" id="arow-@q.Id-@answerIndex">
+                                            <div class="ans-letter-badge">@letter</div>
+                                            <input class="ans-text-input" type="text" value="@answer.Text" placeholder="Вариант ответа…"
+                                                   oninput="patchAnswer(@Model.Id,@q.Id,@answerIndex,'text',this.value)">
                                             <label class="correct-toggle" title="Правильный ответ">
-                                                <input type="checkbox"
-                                                       onchange="patchAnswer(1,101,@(ticketq.Order - 1),'correct',this.checked)">
+                                                <input type="checkbox" onchange="patchAnswer(@Model.Id,@q.Id,@answerIndex,'correct',this.checked)">
                                                 <div class="ct-box">✓</div>
                                                 <span class="ct-label">Верный</span>
                                             </label>
-                                            <button class="del-ans-btn" title="Удалить"
-                                                    onclick="deleteAnswer(1,101,@(ticketq.Order - 1)">
-                                                ✕
-                                            </button>
+                                            <button class="del-ans-btn" title="Удалить" onclick="deleteAnswer(@Model.Id,@q.Id,@answerIndex)">✕</button>
                                         </div>
-
-
-                                    </div>
-                                }
-                                <button class="add-ans-btn" onclick="addAnswer(1,@ticketq.Question.Id)">＋ Добавить вариант</button>
+                                    }
+                                </div>
+                                <button class="add-ans-btn" onclick="addAnswer('@Model.Id', '@q.Id')">＋ Добавить вариант</button>
                             </div>
+            
                             <div class="field-group">
-                                <button class="hint-toggle-btn" onclick="toggleHint(@ticketq.Question.Id)">
-                                    ✎ Редактировать подсказку
+                                <button class="hint-toggle-btn" onclick="toggleHint('@q.Id')">
+                                    @(string.IsNullOrEmpty(q.Exploration) ? "＋ Добавить подсказку" : "✎ Редактировать подсказку")
                                 </button>
-                                <div class="hint-field" id="hint-field-@ticketq.Question.Id" style="">
-                                    <label style="font-size:.68rem;text-transform:uppercase;letter-spacing:.1em;color:var(--text-muted);display:block;margin-bottom:.35rem;margin-top:.5rem">
-                                        Подсказка
-                                        / объяснение
-                                    </label>
-                                    <textarea class="field-input" rows="2" oninput="patchQuestion(1,@ticketq.Question.Id,'hint',this.value)">
-                                    @ticketq.Question.Exploration</textarea>
+                                <div class="hint-field" id="hint-field-@q.Id" style="@(string.IsNullOrEmpty(q.Exploration) ? "display:none" : "")">
+                                    <label style="font-size:.68rem;text-transform:uppercase;letter-spacing:.1em;color:var(--text-muted);display:block;margin-bottom:.35rem;margin-top:.5rem">Подсказка / объяснение</label>
+                                    <textarea class="field-input" rows="2"
+                                              oninput="patchQuestion('@Model.Id', '@q.Id', 'hint', this.value)">@Html.Raw(q.Exploration)</textarea>
                                 </div>
                             </div>
                         </div>
+        
                         <div class="q-card-foot">
                             <div class="q-move-btns">
-                                <button class="move-btn" title="Вверх" onclick="moveQuestion(1,@ticketq.Question.Id,-1)">↑</button>
-                                <button class="move-btn" title="Вниз" onclick="moveQuestion(1,@ticketq.Question.Id,+1)">↓</button>
+                                <button class="move-btn" title="Вверх" onclick="moveQuestion('@Model.Id', '@q.Id', -1)">↑</button>
+                                <button class="move-btn" title="Вниз" onclick="moveQuestion('@Model.Id', '@q.Id', 1)">↓</button>
                             </div>
-                            <button class="del-q-btn" onclick="confirmDeleteQuestion(1,@ticketq.Question.Id)">✕ Удалить вопрос</button>
+                            <button class="del-q-btn" onclick="confirmDeleteQuestion('@Model.Id', '@q.Id')">✕ Удалить вопрос</button>
                         </div>
                     </div>
-
                 }
 
             </div>

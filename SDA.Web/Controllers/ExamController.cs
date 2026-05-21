@@ -12,10 +12,10 @@ namespace SDAProject.Controllers
         IUserRepository userRepository) : Controller
     {
 
-        public IActionResult Index()
+        public async Task<IActionResult> Index()
         {
             //var ticket = TestDataGenerator.GenerateTestTicket();
-            var ticket = ticketRepository.GetAll()[0];
+            var ticket = (await ticketRepository.GetAll())[0];
             var ticketVm = new TicketVm()
             {
                 Id = ticket.Id,

@@ -10,7 +10,7 @@ namespace SDA.Db.Repositories
 {
     internal class TicketRepository(AppContext ddd) : ITicketRepository
     {
-        public List<Ticket>? GetAll() => ddd.Tickets
+        public async Task<List<Ticket>?> GetAll() => ddd.Tickets
             .AsNoTracking()
             .Include(x => x.TicketQuestions)
                 .ThenInclude(x => x.Question)
@@ -49,7 +49,14 @@ namespace SDA.Db.Repositories
             }
 
             existingTicket.Name = ticket.Name;
-            existingTicket.TicketQuestions = ticket.TicketQuestions;
+
+
+            existingTicket.TicketQuestions.Clear();
+            foreach (var question in ticket.TicketQuestions)
+            {
+                existingTicket.TicketQuestions.Add(question);
+            }
+
             await ddd.SaveChangesAsync();
         }
     }

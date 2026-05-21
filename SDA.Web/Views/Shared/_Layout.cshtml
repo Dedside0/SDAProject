@@ -11,8 +11,11 @@
     @RenderSection("Styles", required: false)
 </head>
 <body>
+    @if (!(ViewData["HideNavbar"] as bool? ?? false))
+        {
+            <partial name="_NavBar" />
+        }
 
-    <partial name="_NavBar" />
 
     <header class="mobile-header">
         <button class="burger" id="burger">☰</button>
