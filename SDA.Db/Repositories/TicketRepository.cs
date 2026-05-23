@@ -18,43 +18,89 @@ namespace SDA.Db.Repositories
             .AsSplitQuery()
             .ToList();
 
-        public async Task<Ticket?> GetById(Guid id) =>
-             await ddd.Tickets
-                .AsNoTracking()
-                .Include(x => x.TicketQuestions)
+
+        public async Task<Ticket?> GetById(Guid id, bool track = false)
+        {
+            var tickets = track ? ddd.Tickets : ddd.Tickets.AsNoTracking();
+            return await tickets.Include(x => x.TicketQuestions)
                     .ThenInclude(x => x.Question)
                         .ThenInclude(x => x.Answers)
-                .AsSplitQuery()
+                //.AsSplitQuery()
                 .FirstOrDefaultAsync(t => t.Id == id);
+        }
+
 
         public async Task Create(Ticket ticket)
         {
             if (await GetById(ticket.Id) is not null)
             {
-                await Update(ticket);
-                return;
+                throw new DuplicateWaitObjectException($"Билет с таким Id {ticket.Id} уже существует");
             }
 
             await ddd.AddAsync(ticket);
             await ddd.SaveChangesAsync();
         }
 
-        public async Task Update(Ticket ticket)
+
+        public async Task Update(Ticket incomingTicket)
         {
-            var existingTicket = await GetById(ticket.Id);
-            if (existingTicket == null)
+
+
+            var ticket = await GetById(incomingTicket.Id, track: true);
+
+
+
+            if (ticket == null)
+                throw new KeyNotFoundException($"Билет с Id {incomingTicket.Id} не найден.");
+
+            ticket.Difficulty = incomingTicket.Difficulty;
+            ticket.Description = incomingTicket.Description;
+            ticket.Name = incomingTicket.Name;
+
+
+            var incomingIds = incomingTicket.TicketQuestions.Select(x => x.QuestionId).ToList();
+            var toRemove = ticket.TicketQuestions.Where(x => !incomingIds.Contains(x.QuestionId)).ToList();
+            foreach (var tq in toRemove)
             {
-                await Create(ticket);
-                return;
+                ticket.TicketQuestions.Remove(tq);
             }
 
-            existingTicket.Name = ticket.Name;
-
-
-            existingTicket.TicketQuestions.Clear();
-            foreach (var question in ticket.TicketQuestions)
+            foreach (var incomingTq in incomingTicket.TicketQuestions)
             {
-                existingTicket.TicketQuestions.Add(question);
+                var existingTq = ticket.TicketQuestions.FirstOrDefault(x => x.QuestionId == incomingTq.QuestionId);
+                //Если вопрос уже существовал в этом билете то изменяем его
+                if (existingTq is not null)
+                {
+                    var incomingAnsIds = incomingTq.Question.Answers.Select(x => x.Id).ToList();
+                    var ansToRemove = existingTq.Question.Answers.Where(x => !incomingAnsIds.Contains(x.Id)).ToList();
+                    foreach (var ans in ansToRemove)
+                    {
+                        existingTq.Question.Answers.Remove(ans);
+                    }
+                    existingTq.Order = incomingTq.Order;
+                    var quest = existingTq.Question;
+                    quest.Text = incomingTq.Question.Text;
+                    quest.Exploration = incomingTq.Question.Exploration;
+                    quest.ImageUrl = incomingTq.Question.ImageUrl;
+                    foreach (var incomingAnswer in incomingTq.Question.Answers)
+                    {
+                        var exAns = existingTq.Question.Answers.FirstOrDefault(x => x.Id == incomingAnswer.Id);
+                        if (exAns is not null)
+                        {
+                            exAns.Text = incomingAnswer.Text;
+                            exAns.IsRight = incomingAnswer.IsRight;
+                        }
+                        else
+                        {
+                            existingTq.Question.Answers.Add(incomingAnswer);
+                        }
+
+                    }
+                }
+                else
+                {
+                    ticket.TicketQuestions.Add(incomingTq);
+                }
             }
 
             await ddd.SaveChangesAsync();

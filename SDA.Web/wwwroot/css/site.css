@@ -1000,7 +1000,7 @@ body {
 
 .q-image {
     width: 100%;
-    max-height: 180px;
+    max-height: 42vh;
     object-fit: contain;
     background: var(--surface2);
     border-radius: 10px;
@@ -1911,6 +1911,11 @@ input.field-input {
     justify-content: center;
 }
 
+
+.content-exam{
+    padding: 0 10vw;
+}
+
 /* ─── ADMIN: TOAST ─── */
 .toast {
     position: fixed;
@@ -2001,9 +2006,15 @@ button:disabled {
         }
 
     .content {
-        margin-left: 0;
+        margin: 0 auto;
         padding: 1.25rem 1rem 3rem;
         padding-top: calc(56px + 1.25rem);
+        max-width: 95vw;
+    }
+
+
+    .content-exam {
+        padding: 0 20px;
     }
 
     .stats-overview {

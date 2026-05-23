@@ -195,7 +195,6 @@
     /* ════════ RENDER QUESTION CARD ════════ */
     function renderQuestionCard(tid, q, qi) {
         const letters = ['А', 'Б', 'В', 'Г', 'Д'];
-        // Используем data-атрибуты вместо строковых id в onclick для безопасности
         return `
             <div class="q-card" id="qcard-${q.id}">
                 <div class="q-card-head" onclick="toggleQuestion('${q.id}')">
@@ -331,7 +330,7 @@
         showToast('Ошибка загрузки: ' + err.message, 'error');
     }
 
-    // Сбрасываем input чтобы можно было загрузить тот же файл повторно
+   
     input.value = '';
 }
 

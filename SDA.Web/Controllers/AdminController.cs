@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Razor.Infrastructure;
 using SDA.Db.Models;
 using SDA.Db.Repositories;
 using SDA.Web.Models;
@@ -75,6 +76,10 @@ namespace SDA.Web.Controllers
                         };
                     }).ToList()
                 };
+                foreach (var tq in ticket.TicketQuestions)
+                {
+                    tq.Ticket = ticket;
+                }
                 ticketRepository.Create(ticket);
                 return Ok();
             }
@@ -91,27 +96,29 @@ namespace SDA.Web.Controllers
             try
             {
 
-                var ticket = await ticketRepository.GetById(dto.Id);
-                if (ticket is null)
-                    return NotFound();
+                var ticket = new Ticket();
 
                 ticket.Name = dto.Name;
                 ticket.Difficulty = dto.Difficulty;
                 ticket.Description = dto.Description;
+                ticket.Id = dto.Id;
 
                 ticket.TicketQuestions = dto.TicketQuestions.Select(tqDto =>
                 {
+                    var realQuestionId = tqDto.QuestionId.ToString().StartsWith("00000000-0000-0000-0000-")
+                        ? Guid.Empty
+                        : tqDto.QuestionId;
+
                     var question = new Question
                     {
-                        
-                        Id = tqDto.QuestionId,
+                        Id = realQuestionId,
                         Text = tqDto.Text,
                         ImageUrl = tqDto.ImageUrl,
                         Exploration = tqDto.Exploration,
                         Answers = tqDto.Answers.Select(aDto => new Answer
                         {
-                            Id = aDto.Id,
-                            QuestionId = tqDto.QuestionId,
+                            Id = aDto.Id.ToString().StartsWith("00000000-0000-0000-0000-") ? Guid.Empty : aDto.Id,
+                            QuestionId = realQuestionId,
                             Text = aDto.Text,
                             IsRight = aDto.IsRight
                         }).ToList()
@@ -120,9 +127,10 @@ namespace SDA.Web.Controllers
                     return new TicketQuestion
                     {
                         TicketId = dto.Id,
-                        QuestionId = question.Id,
+                        QuestionId = realQuestionId,
                         Order = tqDto.Order,
-                        Question = question
+                        Question = question,
+                        Ticket = ticket
                     };
                 }).ToList();
 
@@ -134,7 +142,7 @@ namespace SDA.Web.Controllers
             {
                 return BadRequest();
             }
-            }
+        }
 
 
         [ValidateAntiForgeryToken]
@@ -144,12 +152,12 @@ namespace SDA.Web.Controllers
             if (file == null || file.Length == 0)
                 return BadRequest("Файл не выбран");
 
-            
+
             var allowed = new[] { "image/jpeg", "image/png", "image/webp", "image/gif" };
             if (!allowed.Contains(file.ContentType))
                 return BadRequest("Недопустимый формат файла");
 
-            
+
             if (file.Length > 10 * 1024 * 1024)
                 return BadRequest("Файл слишком большой (максимум 5 МБ)");
 
@@ -160,7 +168,7 @@ namespace SDA.Web.Controllers
             using (var stream = new FileStream(fullPath, FileMode.Create))
                 await file.CopyToAsync(stream);
 
-            var url = $"/uploads/questions/{fileName}";
+            var url = $"/images/uploads/questions/{fileName}";
             return Ok(new { url });
         }
     }
