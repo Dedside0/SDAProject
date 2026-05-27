@@ -30,25 +30,34 @@
                 <span class="nav-icon">◧</span> Статистика
             </a>
         </li>
+        @if (User.IsInRole("Admin"))
+        {
+            
+        <li>
+            <a asp-controller="Admin"  asp-action="EditTicket" class="nav-link" data-page="stats">
+                    <span class="nav-icon">♛</span> Администрирование
+            </a>
+        </li>
+        }
     </ul>
     <div class="sidebar-bottom">
-
-        <div class="auth-block guest-state">
-            <a asp-controller="Authorization" asp-action="Index" class="btn-sidebar-login">
-               Войти
-            </a>
-        </div>
-
-        <div class="auth-block user-state">
-            <div class="user-card">
-                <div class="user-avatar">АИ</div>
-                <div class="user-info">
-                    <span class="user-name">Алексей И.</span>
+        @if (User.Identity.IsAuthenticated)
+        {
+            <div class="auth-block user-state">
+                <div class="user-card">
+                    <div class="user-avatar">@User.Identity.Name.Substring(0, 2).ToUpper()</div>
+                    <div class="user-info">
+                        <span class="user-name">@User.Identity.Name</span>
+                    </div>
                 </div>
+                <a asp-controller="Account" asp-action="Logout" class="sidebar-logout">Выйти</a>
             </div>
-            <a asp-controller="Account" asp-action="Logout" class="sidebar-logout">
-                 Выйти
-            </a>
-        </div>
+        }
+        else
+        {
+            <div class="auth-block guest-state">
+                <a asp-controller="Account" asp-action="Authorization" class="btn-sidebar-login">Войти</a>
+            </div>
+        }
     </div>
 </nav>

@@ -1,9 +1,10 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using SDA.Db.Models;
 
 namespace SDA.Db
 {
-    public class AppContext: DbContext
+    public class AppContext: IdentityDbContext<User>
     {
 
         public DbSet<Ticket> Tickets { get; set; }
@@ -18,6 +19,7 @@ namespace SDA.Db
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
+            base.OnModelCreating(modelBuilder);
             modelBuilder.Entity<TicketQuestion>()
                 .HasKey(tq => new { tq.TicketId, tq.QuestionId});
         }

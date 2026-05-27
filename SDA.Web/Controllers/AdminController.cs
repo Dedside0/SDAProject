@@ -1,5 +1,6 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.Razor.Infrastructure;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using SDA.Db;
 using SDA.Db.Models;
 using SDA.Db.Repositories;
 using SDA.Web.Models;
@@ -7,6 +8,7 @@ using SDA.Web.Models.DTO;
 
 namespace SDA.Web.Controllers
 {
+    [Authorize(Roles = Constants.AdminRoleName)]
     public class AdminController(ITicketRepository ticketRepository, IWebHostEnvironment _env) : Controller
     {
         public async Task<IActionResult> EditTicket()
