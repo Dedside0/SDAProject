@@ -25,7 +25,7 @@ namespace SDA.Db.Repositories
             return await tickets.Include(x => x.TicketQuestions)
                     .ThenInclude(x => x.Question)
                         .ThenInclude(x => x.Answers)
-                //.AsSplitQuery()
+                .AsSplitQuery()
                 .FirstOrDefaultAsync(t => t.Id == id);
         }
 

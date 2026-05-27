@@ -210,6 +210,33 @@
                                      document.getElementById('qprev-${q.id}').textContent=this.value||'Без текста'"
                             >${esc(q.text)}</textarea>
                     </div>
+
+
+                    <div class="field-group">
+                        <label>Тема вопроса</label>
+
+                        <div class="topic-select-wrap">
+                            <input class="field-input"
+                                   list="topics-list"
+                                   placeholder="Введите тему или выберите из списка"
+                                   value="${esc(q.topic || '')}"
+                                   oninput="patchQuestion('${tid}','${q.id}','topic',this.value)" />
+
+                            <datalist id="topics-list">
+                                <option value="Дорожные знаки"></option>
+                                <option value="Разметка"></option>
+                                <option value="Перекрёстки"></option>
+                                <option value="Маневрирование"></option>
+                                <option value="Остановка и стоянка"></option>
+                                <option value="Сигналы светофора"></option>
+                                <option value="Приоритет"></option>
+                                <option value="Буксировка"></option>
+                                <option value="Перевозка пассажиров"></option>
+                            </datalist>
+                        </div>
+                    </div>
+
+
                    <div class="field-group">
     <label>Изображение (опционально)</label>
     <input type="file" accept="image/*" id="file-input-${q.id}" style="display:none"

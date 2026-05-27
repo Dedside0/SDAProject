@@ -1,5 +1,4 @@
-﻿<!-- ===== HOME PAGE ===== -->
-<section class="page active" id="page-home">
+﻿<section class="page active" id="page-home">
     <div class="page-header">
         <div class="page-title-block">
             <h1 class="page-title">Добро<br>пожаловать</h1>
@@ -8,43 +7,193 @@
         <div class="header-badge">2026</div>
     </div>
 
+    <!-- СТАТИСТИКА -->
     <div class="home-stats-row">
         <div class="hstat-card">
             <span class="hstat-num" id="hs-total">0</span>
             <span class="hstat-label">Вопросов пройдено</span>
         </div>
+
         <div class="hstat-card accent">
             <span class="hstat-num" id="hs-correct">0%</span>
             <span class="hstat-label">Правильных ответов</span>
         </div>
+
         <div class="hstat-card">
             <span class="hstat-num" id="hs-streak">0</span>
             <span class="hstat-label">Дней подряд</span>
         </div>
     </div>
 
-    <h2 class="section-heading">Выберите режим</h2>
+    <!-- РЕЖИМЫ -->
+    <h2 class="section-heading">Режимы подготовки</h2>
+
     <div class="mode-grid">
         <div class="mode-card" data-goto="exam">
             <div class="mode-icon">◈</div>
+
             <h3>Экзамен</h3>
-            <p>20 вопросов · 20 минут<br>Не более 2 ошибок</p>
+
+            <p>
+                20 вопросов · 20 минут<br>
+                Не более 2 ошибок
+            </p>
+
             <div class="mode-tag">официальный</div>
         </div>
+
         <div class="mode-card" data-goto="train">
             <div class="mode-icon">◉</div>
+
             <h3>Тренировка</h3>
-            <p>Все темы · без ограничений<br>Мгновенная подсказка</p>
+
+            <p>
+                Все темы · без ограничений<br>
+                Мгновенная подсказка
+            </p>
+
             <div class="mode-tag">рекомендуется</div>
         </div>
+
         <div class="mode-card" data-goto="mistakes">
             <div class="mode-icon">◪</div>
+
             <h3>Работа над ошибками</h3>
-            <p>Только ваши ошибки<br>Закрепление материала</p>
-            <div class="mode-tag" id="mistakes-count-badge">0 ошибок</div>
+
+            <p>
+                Только ваши ошибки<br>
+                Закрепление материала
+            </p>
+
+            <div class="mode-tag" id="mistakes-count-badge">
+                0 ошибок
+            </div>
         </div>
     </div>
 
-    <h2 class="section-heading">Темы билетов</h2>
-    <div class="topics-list" id="topics-list"></div>
+    <!-- БИЛЕТЫ -->
+    <div class="home-section">
+        <div class="section-head">
+            <h2 class="section-heading">Экзаменационные билеты</h2>
+
+            <button class="section-action">
+                Все билеты
+            </button>
+        </div>
+
+        <div class="ticket-grid">
+
+            <div class="ticket-card" data-ticket="1">
+                <div class="ticket-top">
+                    <span class="ticket-number">Билет 1</span>
+                    <span class="ticket-status success">✓</span>
+                </div>
+
+                <div class="ticket-meta">
+                    20 вопросов
+                </div>
+            </div>
+
+            <div class="ticket-card" data-ticket="2">
+                <div class="ticket-top">
+                    <span class="ticket-number">Билет 2</span>
+                    <span class="ticket-status">82%</span>
+                </div>
+
+                <div class="ticket-meta">
+                    20 вопросов
+                </div>
+            </div>
+
+            <div class="ticket-card" data-ticket="3">
+                <div class="ticket-top">
+                    <span class="ticket-number">Билет 3</span>
+                    <span class="ticket-status">—</span>
+                </div>
+
+                <div class="ticket-meta">
+                    Не пройден
+                </div>
+            </div>
+
+            <div class="ticket-card" data-ticket="4">
+                <div class="ticket-top">
+                    <span class="ticket-number">Билет 4</span>
+                    <span class="ticket-status">—</span>
+                </div>
+
+                <div class="ticket-meta">
+                    Не пройден
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- ТЕМЫ -->
+    <div class="home-section">
+        <div class="section-head">
+            <h2 class="section-heading">Темы</h2>
+
+            <button class="section-action">
+                Все темы
+            </button>
+        </div>
+
+        <div class="topic-grid">
+
+            <div class="topic-card">
+                <div class="topic-icon">🚦</div>
+
+                <div class="topic-info">
+                    <h3>Дорожные знаки</h3>
+                    <p>148 вопросов</p>
+                </div>
+
+                <div class="topic-progress">
+                    74%
+                </div>
+            </div>
+
+            <div class="topic-card">
+                <div class="topic-icon">🛣</div>
+
+                <div class="topic-info">
+                    <h3>Разметка</h3>
+                    <p>67 вопросов</p>
+                </div>
+
+                <div class="topic-progress">
+                    91%
+                </div>
+            </div>
+
+            <div class="topic-card">
+                <div class="topic-icon">🚘</div>
+
+                <div class="topic-info">
+                    <h3>Маневрирование</h3>
+                    <p>93 вопроса</p>
+                </div>
+
+                <div class="topic-progress">
+                    56%
+                </div>
+            </div>
+
+            <div class="topic-card">
+                <div class="topic-icon">⚠</div>
+
+                <div class="topic-info">
+                    <h3>Перекрёстки</h3>
+                    <p>121 вопрос</p>
+                </div>
+
+                <div class="topic-progress">
+                    43%
+                </div>
+            </div>
+
+        </div>
+    </div>
 </section>
