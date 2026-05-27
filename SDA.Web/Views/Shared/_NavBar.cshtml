@@ -32,12 +32,23 @@
         </li>
     </ul>
     <div class="sidebar-bottom">
-        <div class="user-card">
-            <div class="user-avatar">АИ</div>
-            <div class="user-info">
-                <span class="user-name">Алексей И.</span>
-                <span class="user-level">Уровень: Новичок</span>
+
+        <div class="auth-block guest-state">
+            <a asp-controller="Authorization" asp-action="Index" class="btn-sidebar-login">
+               Войти
+            </a>
+        </div>
+
+        <div class="auth-block user-state">
+            <div class="user-card">
+                <div class="user-avatar">АИ</div>
+                <div class="user-info">
+                    <span class="user-name">Алексей И.</span>
+                </div>
             </div>
+            <a asp-controller="Account" asp-action="Logout" class="sidebar-logout">
+                 Выйти
+            </a>
         </div>
     </div>
 </nav>

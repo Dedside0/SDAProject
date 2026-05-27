@@ -1,0 +1,120 @@
+﻿@{
+    Layout = null;
+}
+
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Регистрация</title>
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/SDA.Web.styles.css" asp-append-version="true" />
+</head>
+<body>
+
+    <div class="auth-wrapper">
+        <div class="auth-card">
+            <div class="auth-header">
+                <div class="auth-logo">ПДД Тестирование</div>
+                <p class="auth-subtitle">Войдите или создайте аккаунт, чтобы продолжить обучение</p>
+            </div>
+
+            <div class="auth-tabs">
+                <button class="auth-tab active" data-target="login">Вход</button>
+                <button class="auth-tab" data-target="register">Регистрация</button>
+            </div>
+
+            <!-- ФОРМА ВХОДА -->
+            <form id="login-form" class="auth-form">
+                <div class="form-group">
+                    <label class="form-label" for="login-email">Email</label>
+                    <input type="email" id="login-email" class="form-input" placeholder="example@mail.com" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="login-pass">Пароль</label>
+                    <div class="form-input-wrap">
+                        <input type="password" id="login-pass" class="form-input" placeholder="Введите пароль" required minlength="6">
+                        <button type="button" class="toggle-password" aria-label="Показать пароль">👁️</button>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <label class="checkbox-wrap">
+                        <input type="checkbox">
+                        <span class="custom-checkbox"></span>
+                        Запомнить меня
+                    </label>
+                    @* <a href="#" class="forgot-link">Забыли пароль?</a> *@
+                </div>
+                <button type="submit" class="btn-primary btn-block">Войти</button>
+            </form>
+
+            <!-- ФОРМА РЕГИСТРАЦИИ -->
+            <form id="register-form" class="auth-form hidden">
+                <div class="form-group">
+                    <label class="form-label" for="reg-name">Имя пользователя</label>
+                    <input type="text" id="reg-name" class="form-input" placeholder="Ваше имя" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="reg-email">Email</label>
+                    <input type="email" id="reg-email" class="form-input" placeholder="example@mail.com" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="reg-pass">Пароль</label>
+                    <div class="form-input-wrap">
+                        <input type="password" id="reg-pass" class="form-input" placeholder="Минимум 8 символов" required minlength="8">
+                        <button type="button" class="toggle-password" aria-label="Показать пароль">👁️</button>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="reg-pass-confirm">Повторите пароль</label>
+                    <div class="form-input-wrap">
+                        <input type="password" id="reg-pass-confirm" class="form-input" placeholder="Повторите пароль" required minlength="8">
+                        <button type="button" class="toggle-password" aria-label="Показать пароль">👁️</button>
+                    </div>
+                </div>
+                <button type="submit" class="btn-primary btn-block">Создать аккаунт</button>
+            </form>
+
+        </div>
+    </div>
+
+    <script>
+             document.addEventListener('DOMContentLoaded', () => {
+                 const tabs = document.querySelectorAll('.auth-tab');
+                 const loginForm = document.getElementById('login-form');
+                 const registerForm = document.getElementById('register-form');
+                 const footerSwitch = document.getElementById('switch');
+                 const passwordToggles = document.querySelectorAll('.toggle-password');
+
+                 function switchTab(target) {
+                     tabs.forEach(t => t.classList.toggle('active', t.dataset.target === target));
+        
+                     if (target === 'login') {
+                         loginForm.classList.remove('hidden');
+                         registerForm.classList.add('hidden');
+                     } else {
+                         loginForm.classList.add('hidden');
+                         registerForm.classList.remove('hidden');
+                     }
+                 }
+
+                 tabs.forEach(tab => tab.addEventListener('click', () => switchTab(tab.dataset.target)));
+
+                 passwordToggles.forEach(btn => {
+                     btn.addEventListener('click', () => {
+                         const input = btn.previousElementSibling;
+                         const isPassword = input.type === 'password';
+                         input.type = isPassword ? 'text' : 'password';
+                         btn.textContent = isPassword ? '🙈' : '👁️';
+                         btn.setAttribute('aria-label', isPassword ? 'Скрыть пароль' : 'Показать пароль');
+                     });
+                 });
+
+
+                 
+             });
+    </script>
+
+</body>
+</html>
