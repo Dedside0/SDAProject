@@ -55,11 +55,6 @@ namespace SDA.Web.Controllers
                     "Необходимо зарегистрироваться под другим логином!");
             }
 
-            //if (_userManager.Users.FirstOrDefaultAsync(x => x.PhoneNumber == registration.Phone).Result != null)
-            //{
-            //    ModelState.AddModelError("", "Пользователь с таким номером телефона уже зарегистрирован!\r\n" +
-            //        "Необходимо зарегистрироваться с другим номером телефона!");
-            //}
 
 
             if (!ModelState.IsValid)
@@ -70,7 +65,7 @@ namespace SDA.Web.Controllers
             var user = new User()
             {
                 Email = registration.Login,
-                UserName = registration.Login,
+                UserName = registration.Name,
                 //PhoneNumber = registration.Phone,
                 RegistrationDateTime = DateTime.UtcNow
             };

@@ -44,44 +44,34 @@ namespace SDA.Web.Controllers
         {
             try
             {
-
-                var id = Guid.NewGuid();
                 var ticket = new Ticket
                 {
-                    Id = id,
                     Name = dto.Name,
-                    Difficulty = dto.Difficulty,
+                    Theme = dto.Theme,
                     Description = dto.Description,
                     TicketQuestions = dto.TicketQuestions.Select(tqDto =>
                     {
-                        var realQuestionId = Guid.NewGuid();
                         var question = new Question
                         {
-                            Id = realQuestionId,
                             Text = tqDto.Text,
                             ImageUrl = tqDto.ImageUrl,
                             Exploration = tqDto.Exploration,
+                            Topic = tqDto.Topic,
                             Answers = tqDto.Answers.Select(aDto => new Answer
                             {
-                                Id = Guid.NewGuid(),
-                                QuestionId = realQuestionId,
                                 Text = aDto.Text,
                                 IsRight = aDto.IsRight
                             }).ToList()
                         };
+
+
                         return new TicketQuestion
                         {
-                            TicketId = id,
-                            QuestionId = realQuestionId,
                             Order = tqDto.Order,
                             Question = question
                         };
                     }).ToList()
                 };
-                foreach (var tq in ticket.TicketQuestions)
-                {
-                    tq.Ticket = ticket;
-                }
                 ticketRepository.Create(ticket);
                 return Ok();
             }
@@ -101,7 +91,7 @@ namespace SDA.Web.Controllers
                 var ticket = new Ticket();
 
                 ticket.Name = dto.Name;
-                ticket.Difficulty = dto.Difficulty;
+                ticket.Theme = dto.Theme;
                 ticket.Description = dto.Description;
                 ticket.Id = dto.Id;
 

@@ -53,7 +53,7 @@ namespace SDA.Db.Repositories
             if (ticket == null)
                 throw new KeyNotFoundException($"Билет с Id {incomingTicket.Id} не найден.");
 
-            ticket.Difficulty = incomingTicket.Difficulty;
+            ticket.Theme = incomingTicket.Theme;
             ticket.Description = incomingTicket.Description;
             ticket.Name = incomingTicket.Name;
 

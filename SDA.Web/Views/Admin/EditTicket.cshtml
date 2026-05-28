@@ -71,7 +71,7 @@
     let tickets = @Html.Raw(Json.Serialize(Model.Select(t => new {
         id          = t.Id,
         name        = t.Name,
-        difficulty  = t.Difficulty ?? "Лёгкий",
+        difficulty  = t.Theme ?? "Лёгкий",
         description = t.Description ?? "",
         questions   = t.TicketQuestions
                        .OrderBy(tq => tq.Order)

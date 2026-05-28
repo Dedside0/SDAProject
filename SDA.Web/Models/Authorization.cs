@@ -8,7 +8,7 @@ namespace SDA.Web.Models
 
         [Display(Name = "Пароль", Prompt = "Введите пароль")]
         [Required(ErrorMessage = "Введите пароль")]
-        [PasswordPropertyText]
+        [DataType(DataType.Password)]
         public string Password { get; set; }
 
         [Display(Name = "Логин", Prompt = "example@mail.com")]
