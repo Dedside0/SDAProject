@@ -6,14 +6,13 @@
     Layout = "_Layout";
 }
 
-
-<!-- LAYOUT -->
 <div>
     <nav class="topnav">
         <div class="nav-logo">🚦 Администрирование</div>
     </nav>
     <div class="layout">
         @Html.AntiForgeryToken()
+
         <!-- ═══ LEFT: TICKET LIST ═══ -->
         <aside class="list-panel">
             <div class="list-header">
@@ -21,7 +20,8 @@
                 <div class="list-count" id="list-count"></div>
             </div>
             <div class="search-wrap">
-                <input class="search-input" type="text" placeholder="🔍  Поиск по названию…" oninput="filterTickets(this.value)" />
+                <input class="search-input" type="text" placeholder="🔍  Поиск по названию…"
+                    oninput="filterTickets(this.value)" />
             </div>
             <div class="tickets-list" id="tickets-list"></div>
             <button class="add-ticket-btn" onclick="addTicket()">＋ Добавить билет</button>
@@ -36,7 +36,6 @@
             </div>
             <div id="ticket-editor" style="display:none"></div>
         </main>
-
     </div>
 
     <!-- SAVE BAR -->
@@ -66,32 +65,56 @@
 
 @section Scripts {
 <script>
-    // ── Данные из контроллера ──
-    // Ticket.TicketQuestions упорядочены по Order, вопрос в TicketQuestion.Question
+    // ── Список тем билета ──────────────────────────────────────────────────────
+    const TICKET_THEMES = [
+        'Экзамен',
+        'Дорожные знаки',
+        'Разметка',
+        'Перекрёстки',
+        'Маневрирование',
+        'Остановка и стоянка',
+        'Сигналы светофора',
+        'Приоритет',
+        'Буксировка',
+        'Перевозка пассажиров',
+    ];
+
+    // ── Данные из контроллера ──────────────────────────────────────────────────
+    // Answer.Order используется для сохранения порядка вариантов ответа в редакторе.
+    // При рендере ответы сортируются по этому полю.
     let tickets = @Html.Raw(Json.Serialize(Model.Select(t => new {
         id          = t.Id,
         name        = t.Name,
-        difficulty  = t.Theme ?? "Лёгкий",
+        theme       = t.Theme ?? "Экзамен",
         description = t.Description ?? "",
         questions   = t.TicketQuestions
                        .OrderBy(tq => tq.Order)
                        .Select(tq => new {
-                           id        = tq.QuestionId,
-                           text      = tq.Question.Text,
-                           imageUrl  = tq.Question.ImageUrl,
-                           hint      = tq.Question.Exploration ?? "",
-                           order     = tq.Order,
-                           answers   = tq.Question.Answers.Select(a => new {
-                               id      = a.Id,
-                               text    = a.Text,
-                               correct = a.IsRight
-                           })
+                           id       = tq.QuestionId,
+                           text     = tq.Question.Text,
+                           imageUrl = tq.Question.ImageUrl,
+                           hint     = tq.Question.Exploration ?? "",
+                           topic    = tq.Question.Topic ?? "",
+                           order    = tq.Order,
+                           // Сортируем ответы по Order, чтобы порядок не менялся
+                           answers  = tq.Question.Answers
+                                        .OrderBy(a => a.Order)
+                                        .Select(a => new {
+                                            id      = a.Id,
+                                            text    = a.Text,
+                                            correct = a.IsRight,
+                                            order   = a.Order
+                                        })
                        })
     })));
 
     let activeTicketId  = null;
     let isDirty         = false;
-    let questionCounter = 0; // временный числовой суффикс для новых вопросов (до сохранения)
+    let tempCounter     = 0; // счётчик временных ID до сохранения на сервере
+
+    function newTempId() {
+        return '00000000-0000-0000-0000-' + String(++tempCounter).padStart(12, '0');
+    }
 
     /* ════════ RENDER LIST ════════ */
     function renderList(filter = '') {
@@ -114,7 +137,7 @@
                 <div class="ticket-num">${String(idx + 1).padStart(2, '0')}</div>
                 <div class="ticket-meta">
                     <div class="ticket-name">${esc(t.name)}</div>
-                    <div class="ticket-info">${t.questions.length} вопр. · ${esc(t.difficulty)}</div>
+                    <div class="ticket-info">${t.questions.length} вопр. · ${esc(t.theme)}</div>
                 </div>`;
             div.onclick = () => openTicket(t.id);
             container.appendChild(div);
@@ -148,12 +171,17 @@
 
     /* ════════ RENDER EDITOR ════════ */
     function renderEditor(t) {
-        const el = document.getElementById('ticket-editor');
-        el.innerHTML = `
+        // Строим <option> для темы билета
+        const themeOptions = TICKET_THEMES.map(th =>
+            `<option${t.theme === th ? ' selected' : ''}>${esc(th)}</option>`
+        ).join('');
+
+        document.getElementById('ticket-editor').innerHTML = `
             <div class="editor-top">
                 <div class="editor-top-left">
                     <div class="editor-label">Название билета</div>
-                    <input class="ticket-title-input" type="text" value="${esc(t.name)}" placeholder="Введите название…"
+                    <input class="ticket-title-input" type="text" value="${esc(t.name)}"
+                        placeholder="Введите название…"
                         oninput="patchTicket('name', this.value)" />
                 </div>
                 <div class="editor-actions">
@@ -164,16 +192,15 @@
 
             <div class="meta-row">
                 <div class="meta-field">
-                    <label>Сложность</label>
-                    <select class="meta-select" onchange="patchTicket('difficulty', this.value)">
-                        ${['Лёгкий','Средний','Трудный'].map(d =>
-                            `<option${t.difficulty === d ? ' selected' : ''}>${esc(d)}</option>`
-                        ).join('')}
+                    <label>Тема билета</label>
+                    <select class="meta-select" onchange="patchTicket('theme', this.value)">
+                        ${themeOptions}
                     </select>
                 </div>
                 <div class="meta-field">
                     <label>ID билета</label>
-                    <input class="meta-input" type="text" value="${esc(t.id)}" disabled style="opacity:.4;cursor:default"/>
+                    <input class="meta-input" type="text" value="${esc(t.id)}"
+                        disabled style="opacity:.4;cursor:default"/>
                 </div>
                 <div class="meta-field" style="grid-column:1/-1">
                     <label>Описание</label>
@@ -195,6 +222,13 @@
     /* ════════ RENDER QUESTION CARD ════════ */
     function renderQuestionCard(tid, q, qi) {
         const letters = ['А', 'Б', 'В', 'Г', 'Д'];
+
+        // Ответы уже отсортированы по order при загрузке с сервера.
+        // При добавлении нового ответа мы тоже выставляем order — порядок сохраняется.
+        const answersHtml = q.answers
+            .map((a, ai) => renderAnswerRow(tid, q.id, a, ai, letters[ai]))
+            .join('');
+
         return `
             <div class="q-card" id="qcard-${q.id}">
                 <div class="q-card-head" onclick="toggleQuestion('${q.id}')">
@@ -203,6 +237,7 @@
                     <div class="q-expand-icon">▾</div>
                 </div>
                 <div class="q-card-body">
+
                     <div class="field-group">
                         <label>Текст вопроса</label>
                         <textarea class="field-input" rows="3"
@@ -211,18 +246,15 @@
                             >${esc(q.text)}</textarea>
                     </div>
 
-
                     <div class="field-group">
                         <label>Тема вопроса</label>
-
                         <div class="topic-select-wrap">
                             <input class="field-input"
-                                   list="topics-list"
+                                   list="topics-datalist"
                                    placeholder="Введите тему или выберите из списка"
                                    value="${esc(q.topic || '')}"
                                    oninput="patchQuestion('${tid}','${q.id}','topic',this.value)" />
-
-                            <datalist id="topics-list">
+                            <datalist id="topics-datalist">
                                 <option value="Дорожные знаки"></option>
                                 <option value="Разметка"></option>
                                 <option value="Перекрёстки"></option>
@@ -236,28 +268,28 @@
                         </div>
                     </div>
 
+                    <div class="field-group">
+                        <label>Изображение (опционально)</label>
+                        <input type="file" accept="image/*" id="file-input-${q.id}" style="display:none"
+                            onchange="uploadImage('${tid}','${q.id}',this)" />
+                        <div class="img-stub" onclick="document.getElementById('file-input-${q.id}').click()">
+                            <div class="img-stub-icon" id="img-icon-${q.id}">🖼</div>
+                            <span id="img-label-${q.id}">${q.imageUrl ? 'Изменить изображение' : 'Нажмите, чтобы добавить'}</span>
+                        </div>
+                        <div id="img-preview-${q.id}" style="${q.imageUrl ? '' : 'display:none'}">
+                            <img src="${q.imageUrl || ''}"
+                                style="max-height:120px;margin-top:8px;border-radius:6px;display:block" />
+                            <button class="del-ans-btn" style="margin-top:6px"
+                                onclick="removeImage('${tid}','${q.id}')">✕ Удалить изображение</button>
+                        </div>
+                    </div>
 
-                   <div class="field-group">
-    <label>Изображение (опционально)</label>
-    <input type="file" accept="image/*" id="file-input-${q.id}" style="display:none"
-        onchange="uploadImage('${tid}','${q.id}',this)" />
-    <div class="img-stub" onclick="document.getElementById('file-input-${q.id}').click()">
-        <div class="img-stub-icon" id="img-icon-${q.id}">🖼</div>
-        <span id="img-label-${q.id}">${q.imageUrl ? 'Изменить изображение' : 'Нажмите, чтобы добавить'}</span>
-    </div>
-    <div id="img-preview-${q.id}" style="${q.imageUrl ? '' : 'display:none'}">
-        <img src="${q.imageUrl || ''}" style="max-height:120px;margin-top:8px;border-radius:6px;display:block" />
-        <button class="del-ans-btn" style="margin-top:6px" onclick="removeImage('${tid}','${q.id}')">✕ Удалить
-            изображение</button>
-    </div>
-</div>
                     <div class="field-group">
                         <div class="answers-label">Варианты ответов</div>
-                        <div id="answers-${q.id}">
-                            ${q.answers.map((a, ai) => renderAnswerRow(tid, q.id, a, ai, letters[ai])).join('')}
-                        </div>
+                        <div id="answers-${q.id}">${answersHtml}</div>
                         <button class="add-ans-btn" onclick="addAnswer('${tid}','${q.id}')">＋ Добавить вариант</button>
                     </div>
+
                     <div class="field-group">
                         <button class="hint-toggle-btn" onclick="toggleHint('${q.id}')">
                             ${q.hint ? '✎ Редактировать подсказку' : '＋ Добавить подсказку'}
@@ -272,6 +304,7 @@
                                 >${esc(q.hint || '')}</textarea>
                         </div>
                     </div>
+
                 </div>
                 <div class="q-card-foot">
                     <div class="q-move-btns">
@@ -283,6 +316,7 @@
             </div>`;
     }
 
+    /* ── Одна строка ответа ───────────────────────────────────────────────── */
     function renderAnswerRow(tid, qid, a, ai, letter) {
         return `
             <div class="answer-row" id="arow-${qid}-${ai}">
@@ -311,62 +345,49 @@
         if (f) f.style.display = f.style.display === 'none' ? 'block' : 'none';
     }
 
-    /* ════════ IMAGE UPLOAD  ════════ */
+    /* ════════ IMAGE UPLOAD ════════ */
     async function uploadImage(tid, qid, input) {
-    const file = input.files[0];
-    if (!file) return;
+        const file = input.files[0];
+        if (!file) return;
 
-    const token = document.querySelector('input[name="__RequestVerificationToken"]').value;
+        const token = document.querySelector('input[name="__RequestVerificationToken"]').value;
+        document.getElementById('img-label-' + qid).textContent = 'Загрузка…';
+        document.getElementById('img-icon-' + qid).textContent = '⏳';
 
+        const formData = new FormData();
+        formData.append('file', file);
 
-    document.getElementById('img-label-' + qid).textContent = 'Загрузка…';
-    document.getElementById('img-icon-'  + qid).textContent = '⏳';
+        try {
+            const resp = await fetch('/Admin/UploadImage', {
+                method: 'POST',
+                headers: { 'RequestVerificationToken': token },
+                body: formData
+            });
+            if (!resp.ok) throw new Error(await resp.text());
 
-    const formData = new FormData();
-    formData.append('file', file);
+            const { url } = await resp.json();
+            patchQuestion(tid, qid, 'imageUrl', url);
 
-    try {
-        const resp = await fetch('/Admin/UploadImage', {
-            method: 'POST',
-            headers: { 'RequestVerificationToken': token },
-            body: formData
-        });
-
-        if (!resp.ok) {
-            const err = await resp.text();
-            throw new Error(err);
+            const preview = document.getElementById('img-preview-' + qid);
+            preview.querySelector('img').src = url;
+            preview.style.display = '';
+            document.getElementById('img-label-' + qid).textContent = 'Изменить изображение';
+            document.getElementById('img-icon-' + qid).textContent = '🖼';
+            showToast('Изображение загружено ✓');
+        } catch (err) {
+            document.getElementById('img-label-' + qid).textContent = 'Нажмите, чтобы добавить';
+            document.getElementById('img-icon-' + qid).textContent = '🖼';
+            showToast('Ошибка загрузки: ' + err.message, 'error');
         }
-
-        const { url } = await resp.json();
-
-        // Обновляем данные в массиве
-        patchQuestion(tid, qid, 'imageUrl', url);
-
-        // Обновляем превью
-        const preview = document.getElementById('img-preview-' + qid);
-        preview.querySelector('img').src = url;
-        preview.style.display = '';
-
-        document.getElementById('img-label-' + qid).textContent = 'Изменить изображение';
-        document.getElementById('img-icon-'  + qid).textContent = '🖼';
-
-        showToast('Изображение загружено ✓');
-    } catch (err) {
-        document.getElementById('img-label-' + qid).textContent = 'Нажмите, чтобы добавить';
-        document.getElementById('img-icon-'  + qid).textContent = '🖼';
-        showToast('Ошибка загрузки: ' + err.message, 'error');
+        input.value = '';
     }
 
-   
-    input.value = '';
-}
-
-function removeImage(tid, qid) {
-    patchQuestion(tid, qid, 'imageUrl', null);
-    const preview = document.getElementById('img-preview-' + qid);
-    if (preview) preview.style.display = 'none';
-    document.getElementById('img-label-' + qid).textContent = 'Нажмите, чтобы добавить';
-}
+    function removeImage(tid, qid) {
+        patchQuestion(tid, qid, 'imageUrl', null);
+        const preview = document.getElementById('img-preview-' + qid);
+        if (preview) preview.style.display = 'none';
+        document.getElementById('img-label-' + qid).textContent = 'Нажмите, чтобы добавить';
+    }
 
     /* ════════ PATCH HELPERS ════════ */
     function patchTicket(key, val) {
@@ -401,16 +422,18 @@ function removeImage(tid, qid) {
         if (!t) return;
         const q = t.questions.find(x => x.id === qid);
         if (!q) return;
+        if (q.answers.length >= 5) { showToast('Максимум 5 вариантов', 'error'); return; }
+
         const ai = q.answers.length;
         const letters = ['А', 'Б', 'В', 'Г', 'Д'];
-        if (ai >= 5) { showToast('Максимум 5 вариантов', 'error'); return; }
-        // Новый ответ — id будет присвоен сервером; используем временный суффикс
-        q.answers.push({ id: '00000000-0000-0000-0000-' + String(++questionCounter).padStart(12,'0'), text: '', correct: false });
+
+        // order = текущий индекс, чтобы новый ответ встал последним
+        q.answers.push({ id: newTempId(), text: '', correct: false, order: ai });
         setDirty(true);
-        const container = document.getElementById('answers-' + qid);
+
         const div = document.createElement('div');
         div.innerHTML = renderAnswerRow(tid, qid, q.answers[ai], ai, letters[ai]);
-        container.appendChild(div.firstElementChild);
+        document.getElementById('answers-' + qid).appendChild(div.firstElementChild);
     }
 
     function deleteAnswer(tid, qid, ai) {
@@ -419,8 +442,12 @@ function removeImage(tid, qid) {
         const q = t.questions.find(x => x.id === qid);
         if (!q) return;
         if (q.answers.length <= 2) { showToast('Минимум 2 варианта', 'error'); return; }
+
         q.answers.splice(ai, 1);
+        // Пересчитываем order после удаления
+        q.answers.forEach((a, i) => a.order = i);
         setDirty(true);
+
         const letters = ['А', 'Б', 'В', 'Г', 'Д'];
         document.getElementById('answers-' + qid).innerHTML =
             q.answers.map((a, i) => renderAnswerRow(tid, qid, a, i, letters[i])).join('');
@@ -429,14 +456,15 @@ function removeImage(tid, qid) {
     function addQuestion(tid) {
         const t = tickets.find(x => x.id === tid);
         if (!t) return;
-        const tempId = '00000000-0000-0000-0000-' + String(++questionCounter).padStart(12,'0');
+
         const newQ = {
-            id: tempId,
-            text: '', imageUrl: null, hint: '',
+            id: newTempId(),
+            text: '', imageUrl: null, hint: '', topic: '', order: t.questions.length,
             answers: [
-                { id: '00000000-0000-0000-0000-' + String(++questionCounter).padStart(12,'0'), text: '', correct: true },
-                { id: '00000000-0000-0000-0000-' + String(++questionCounter).padStart(12,'0'), text: '', correct: false },
-                { id: '00000000-0000-0000-0000-' + String(++questionCounter).padStart(12,'0'), text: '', correct: false }
+                { id: newTempId(), text: '', correct: true,  order: 0 },
+                { id: newTempId(), text: '', correct: false, order: 1 },
+                { id: newTempId(), text: '', correct: false, order: 2 },
+                { id: newTempId(), text: '', correct: false, order: 3 }
             ]
         };
         t.questions.push(newQ);
@@ -459,25 +487,27 @@ function removeImage(tid, qid) {
         const i = t.questions.findIndex(x => x.id === qid);
         const j = i + dir;
         if (j < 0 || j >= t.questions.length) return;
+
         [t.questions[i], t.questions[j]] = [t.questions[j], t.questions[i]];
-        // Обновляем поле order
         t.questions.forEach((q, idx) => q.order = idx);
         setDirty(true);
         renderEditor(t);
     }
 
     function addTicket() {
-        const tempId = '00000000-0000-0000-0000-' + String(++questionCounter).padStart(12,'0');
         const newT = {
-            id: tempId,
-            name: 'Новый билет', difficulty: 'Лёгкий', description: '',
+            id: newTempId(),
+            name: 'Новый билет',
+            theme: 'Экзамен',   // тема по умолчанию
+            description: '',
             questions: [{
-                id: '00000000-0000-0000-0000-' + String(++questionCounter).padStart(12,'0'),
-                text: '', imageUrl: null, hint: '',
+                id: newTempId(),
+                text: '', imageUrl: null, hint: '', topic: '', order: 0,
                 answers: [
-                    { id: '00000000-0000-0000-0000-' + String(++questionCounter).padStart(12,'0'), text: '', correct: true },
-                    { id: '00000000-0000-0000-0000-' + String(++questionCounter).padStart(12,'0'), text: '', correct: false },
-                    { id: '00000000-0000-0000-0000-' + String(++questionCounter).padStart(12,'0'), text: '', correct: false }
+                    { id: newTempId(), text: '', correct: true,  order: 0 },
+                    { id: newTempId(), text: '', correct: false, order: 1 },
+                    { id: newTempId(), text: '', correct: false, order: 2 },
+                    { id: newTempId(), text: '', correct: false, order: 3 }
                 ]
             }]
         };
@@ -521,9 +551,11 @@ function removeImage(tid, qid) {
         const q = t.questions.find(x => x.id === qid);
         if (!q) return;
         document.getElementById('confirm-title').textContent = 'Удалить вопрос?';
-        document.getElementById('confirm-msg').textContent = `Вопрос «${esc(q.text) || 'Без текста'}» будет удалён.`;
+        document.getElementById('confirm-msg').textContent =
+            `Вопрос «${esc(q.text) || 'Без текста'}» будет удалён.`;
         confirmCallback = () => {
             t.questions = t.questions.filter(x => x.id !== qid);
+            t.questions.forEach((q, idx) => q.order = idx); // пересчитываем order
             setDirty(true);
             document.getElementById('qcard-' + qid)?.remove();
             const secTitle = document.querySelector('.section-title');
@@ -551,49 +583,50 @@ function removeImage(tid, qid) {
     }
 
     async function saveCurrentTicket() {
-    const t = tickets.find(x => x.id === activeTicketId);
-    if (!t) return;
+        const t = tickets.find(x => x.id === activeTicketId);
+        if (!t) return;
 
-    const payload = {
-        id:          t.id,
-        name:        t.name,
-        difficulty:  t.difficulty,
-        description: t.description,
-        ticketQuestions: t.questions.map((q, idx) => ({
-            questionId:  q.id,
-            order:       idx,
-            text:        q.text,
-            imageUrl:    q.imageUrl,
-            exploration: q.hint,
-            answers: q.answers.map(a => ({
-                id:      a.id,
-                text:    a.text,
-                isRight: a.correct
+        const payload = {
+            id:          t.id,
+            name:        t.name,
+            theme:       t.theme,       // отправляем тему вместо difficulty
+            description: t.description,
+            ticketQuestions: t.questions.map((q, idx) => ({
+                questionId:  q.id,
+                order:       idx,
+                text:        q.text,
+                imageUrl:    q.imageUrl,
+                exploration: q.hint,
+                topic:       q.topic,
+                answers: q.answers.map((a, ai) => ({
+                    id:      a.id,
+                    text:    a.text,
+                    isRight: a.correct,
+                    order:   ai          // передаём актуальный порядок ответов
+                }))
             }))
-        }))
-    };
+        };
 
-    const isNew  = t.id.startsWith('00000000-0000-0000-0000-');
-    const url    = isNew ? '/Admin/CreateTicket' : `/Admin/UpdateTicket`;
-    const method = isNew ? 'POST' : 'PUT';
+        const isNew  = t.id.startsWith('00000000-0000-0000-0000-');
+        const url    = isNew ? '/Admin/CreateTicket' : '/Admin/UpdateTicket';
+        const method = isNew ? 'POST' : 'PUT';
 
-    try {
-        const token = document.querySelector('input[name="__RequestVerificationToken"]').value;
-        const resp = await fetch(url, {
-            method,
-            headers: { 'Content-Type': 'application/json',
-            'RequestVerificationToken': token
-            },
-            body: JSON.stringify(payload)   
-        });
-
-        if (!resp.ok) throw new Error('Ошибка сервера: ' + resp.status);
-
-        location.reload(); 
-    } catch (err) {
-        showToast('Ошибка при сохранении: ' + err.message, 'error');
+        try {
+            const token = document.querySelector('input[name="__RequestVerificationToken"]').value;
+            const resp  = await fetch(url, {
+                method,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'RequestVerificationToken': token
+                },
+                body: JSON.stringify(payload)
+            });
+            if (!resp.ok) throw new Error('Ошибка сервера: ' + resp.status);
+            location.reload();
+        } catch (err) {
+            showToast('Ошибка при сохранении: ' + err.message, 'error');
+        }
     }
-}
 
     function discardChanges() {
         if (!confirm('Отменить все несохранённые изменения?')) return;
@@ -616,10 +649,10 @@ function removeImage(tid, qid) {
     /* ════════ UTILS ════════ */
     function esc(s) {
         return (s || '')
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;');
+            .replace(/&/g,  '&amp;')
+            .replace(/</g,  '&lt;')
+            .replace(/>/g,  '&gt;')
+            .replace(/"/g,  '&quot;');
     }
 
     /* ════════ INIT ════════ */

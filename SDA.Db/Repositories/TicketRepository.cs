@@ -89,6 +89,7 @@ namespace SDA.Db.Repositories
                         {
                             exAns.Text = incomingAnswer.Text;
                             exAns.IsRight = incomingAnswer.IsRight;
+                            exAns.Order = incomingAnswer.Order;
                         }
                         else
                         {

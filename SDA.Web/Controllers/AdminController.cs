@@ -29,7 +29,8 @@ namespace SDA.Web.Controllers
                         Answers = tQuest.Question.Answers.Select(ans => new AnswerVm()
                         {
                             Id = ans.Id,
-                            Text = ans.Text
+                            Text = ans.Text,
+                            Order = ans.Order,
                         }).ToList()
                     }
                 }).ToList()
@@ -60,10 +61,10 @@ namespace SDA.Web.Controllers
                             Answers = tqDto.Answers.Select(aDto => new Answer
                             {
                                 Text = aDto.Text,
-                                IsRight = aDto.IsRight
+                                IsRight = aDto.IsRight,
+                                Order = aDto.Order
                             }).ToList()
                         };
-
 
                         return new TicketQuestion
                         {
@@ -112,7 +113,8 @@ namespace SDA.Web.Controllers
                             Id = aDto.Id.ToString().StartsWith("00000000-0000-0000-0000-") ? Guid.Empty : aDto.Id,
                             QuestionId = realQuestionId,
                             Text = aDto.Text,
-                            IsRight = aDto.IsRight
+                            IsRight = aDto.IsRight,
+                            Order = aDto.Order,
                         }).ToList()
                     };
 
