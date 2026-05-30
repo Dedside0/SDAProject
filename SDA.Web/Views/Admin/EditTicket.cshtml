@@ -79,9 +79,6 @@
         'Перевозка пассажиров',
     ];
 
-    // ── Данные из контроллера ──────────────────────────────────────────────────
-    // Answer.Order используется для сохранения порядка вариантов ответа в редакторе.
-    // При рендере ответы сортируются по этому полю.
     let tickets = @Html.Raw(Json.Serialize(Model.Select(t => new {
         id          = t.Id,
         name        = t.Name,
@@ -96,7 +93,6 @@
                            hint     = tq.Question.Exploration ?? "",
                            topic    = tq.Question.Topic ?? "",
                            order    = tq.Order,
-                           // Сортируем ответы по Order, чтобы порядок не менялся
                            answers  = tq.Question.Answers
                                         .OrderBy(a => a.Order)
                                         .Select(a => new {
@@ -223,8 +219,7 @@
     function renderQuestionCard(tid, q, qi) {
         const letters = ['А', 'Б', 'В', 'Г', 'Д'];
 
-        // Ответы уже отсортированы по order при загрузке с сервера.
-        // При добавлении нового ответа мы тоже выставляем order — порядок сохраняется.
+
         const answersHtml = q.answers
             .map((a, ai) => renderAnswerRow(tid, q.id, a, ai, letters[ai]))
             .join('');
@@ -589,7 +584,7 @@
         const payload = {
             id:          t.id,
             name:        t.name,
-            theme:       t.theme,       // отправляем тему вместо difficulty
+            theme:       t.theme,      
             description: t.description,
             ticketQuestions: t.questions.map((q, idx) => ({
                 questionId:  q.id,
@@ -602,7 +597,7 @@
                     id:      a.id,
                     text:    a.text,
                     isRight: a.correct,
-                    order:   ai          // передаём актуальный порядок ответов
+                    order:   ai          
                 }))
             }))
         };

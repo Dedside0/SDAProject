@@ -9,7 +9,11 @@ using SDA.Web.Models.DTO;
 namespace SDA.Web.Controllers
 {
     [Authorize(Roles = Constants.AdminRoleName)]
-    public class AdminController(ITicketRepository ticketRepository, IWebHostEnvironment _env) : Controller
+    public class AdminController(
+        ITicketRepository ticketRepository,
+        IQuestionRepository questionRepository,
+        IThemeRepository themeRepository,
+        IWebHostEnvironment _env) : Controller
     {
         public async Task<IActionResult> EditTicket()
         {
@@ -83,7 +87,7 @@ namespace SDA.Web.Controllers
         }
 
         [ValidateAntiForgeryToken]
-        [HttpPut]
+        [HttpPatch]
         public async Task<IActionResult> UpdateTicket([FromBody] SaveTicketDto dto)
         {
             try
@@ -165,5 +169,61 @@ namespace SDA.Web.Controllers
             var url = $"/images/uploads/questions/{fileName}";
             return Ok(new { url });
         }
+
+
+        [HttpGet]
+        public async Task<IActionResult> EditTheme()
+        {
+            var allThemes = await themeRepository.GetAll();
+            return View(allThemes);
+        }
+
+
+        [HttpPost]
+        public async Task<IActionResult> CreateTheme(string name)
+        {
+            try
+            {
+
+                var theme = new QuestionTheme { Name = name };
+                await  themeRepository.Create(theme);
+                return RedirectToAction("EditTheme");
+            }
+            catch
+            {
+                return BadRequest();
+            }
+        }
+
+
+        [HttpPut]
+        public async Task<IActionResult> UpdateTheme([FromBody] QuestionTheme theme)
+        {
+            try
+            {
+                await themeRepository.Update(theme);
+                return Ok();
+            }
+            catch
+            {
+                return BadRequest();
+            }
+        }
+
+        [HttpDelete]
+        public async Task<IActionResult> DeleteTheme(int id)
+        {
+            try
+            {
+                await themeRepository.Delete(id);
+                return Ok();
+            }
+            catch
+            {
+                return BadRequest();
+            }
+        }
+
+
     }
 }

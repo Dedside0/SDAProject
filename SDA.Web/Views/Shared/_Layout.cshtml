@@ -7,13 +7,112 @@
     <script type="importmap"></script>
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/SDA.Web.styles.css" asp-append-version="true" />
+
+    <style>
+            .nav-item-dropdown {
+                position: relative;
+                padding: .15rem .75rem;
+            }
+
+            .nav-dropdown-toggle {
+                display: flex;
+                align-items: center;
+                gap: .75rem;
+                padding: .65rem .75rem;
+                border-radius: var(--radius);
+                color: var(--text-muted);
+                font-weight: 500;
+                font-size: .9rem;
+                cursor: pointer;
+                transition: background .2s, color .2s;
+                user-select: none;
+            }
+
+                .nav-dropdown-toggle:hover {
+                    background: var(--surface2);
+                    color: var(--text);
+                }
+
+            /* Стрелка — вращается при открытии */
+            .nav-arrow {
+                margin-left: auto;
+                font-size: 1rem;
+                line-height: 1;
+                transition: transform .25s ease;
+                color: var(--text-muted);
+            }
+
+            .nav-item-dropdown.open .nav-arrow {
+                transform: rotate(90deg);
+            }
+
+            /* Активное состояние (если текущая страница — любой подраздел админки) */
+            .nav-item-dropdown.open .nav-dropdown-toggle,
+            .nav-item-dropdown.admin-active .nav-dropdown-toggle {
+                background: rgba(240,192,64,.12);
+                color: var(--accent);
+            }
+
+            .nav-item-dropdown.admin-active .nav-arrow {
+                color: var(--accent);
+            }
+
+            /* Подменю */
+            .nav-submenu {
+                list-style: none;
+                padding: 0;
+                margin: 0;
+                overflow: hidden;
+                max-height: 0;
+                transition: max-height .28s ease, opacity .2s ease;
+                opacity: 0;
+            }
+
+            .nav-item-dropdown.open .nav-submenu {
+                max-height: 200px;
+                opacity: 1;
+            }
+
+            .nav-sublink {
+                display: flex;
+                align-items: center;
+                gap: .6rem;
+                padding: .5rem .75rem .5rem 2.35rem;
+                border-radius: 8px;
+                color: var(--text-muted);
+                text-decoration: none;
+                font-size: .85rem;
+                font-weight: 500;
+                margin: .1rem 0;
+                transition: background .15s, color .15s;
+            }
+
+                .nav-sublink:hover {
+                    background: var(--surface2);
+                    color: var(--text);
+                }
+
+                .nav-sublink.active {
+                    background: var(--accent);
+                    color: #0e0f14;
+                }
+
+                    .nav-sublink.active .sub-icon {
+                        color: #0e0f14;
+                    }
+
+            .sub-icon {
+                font-size: .75rem;
+                color: var(--text-muted);
+            }
+    </style>
     @RenderSection("Styles", required: false)
 </head>
 <body>
     @if (!(ViewData["HideNavbar"] as bool? ?? false))
-        {
-            <partial name="_NavBar" />
-        }
+    {
+        <partial name="_NavBar" />
+    }
 
 
     <header class="mobile-header">
@@ -26,11 +125,38 @@
         @RenderBody()
 
     </main>
-        
 
+        
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
+    @if (User.IsInRole("Admin"))
+    {
+            
+        <script>
+                function toggleAdminMenu(el) {
+                    el.closest('.nav-item-dropdown').classList.toggle('open');
+                }
+
+                // Автоматически открыть и подсветить нужный пункт если мы на странице Admin
+                (function () {
+                    const path = window.location.pathname.toLowerCase();
+                    if (!path.startsWith('/admin')) return;
+
+                    const dropdown = document.querySelector('.nav-item-dropdown');
+                    if (!dropdown) return;
+
+                    dropdown.classList.add('open', 'admin-active');
+
+                    dropdown.querySelectorAll('.nav-sublink').forEach(link => {
+                        const href = link.getAttribute('href') || '';
+                        if (href && path.startsWith(href.toLowerCase())) {
+                            link.classList.add('active');
+                        }
+                    });
+                })();
+        </script>
+    }
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

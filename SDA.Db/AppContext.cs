@@ -11,6 +11,9 @@ namespace SDA.Db
         public DbSet<TicketQuestion> TicketQuestions { get; set; }
         public DbSet<Question> Questions { get; set; }
         public DbSet<Answer> Answers { get; set; }
+        public DbSet<ExamAttempt> ExamAttempts { get; set; }
+        public DbSet<QuestionAttempt> QuestionAttempts { get; set; }
+        public DbSet<QuestionTheme> Themes { get; set; }
 
         public AppContext(DbContextOptions<AppContext> options) : base(options)
         {
@@ -22,6 +25,7 @@ namespace SDA.Db
             base.OnModelCreating(modelBuilder);
             modelBuilder.Entity<TicketQuestion>()
                 .HasKey(tq => new { tq.TicketId, tq.QuestionId});
+            
         }
 
 

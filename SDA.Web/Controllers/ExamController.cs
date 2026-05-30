@@ -1,7 +1,6 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SDA.Db.Repositories;
-using SDA.Web;
 using SDA.Web.Models;
 using SDA.Web.Models.DTO;
 

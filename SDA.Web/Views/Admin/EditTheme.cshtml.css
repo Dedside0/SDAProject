@@ -1,0 +1,245 @@
+﻿/* ── PAGE ─────────────────────────────────────────────── */
+.themes-page {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    max-width: 680px;
+}
+
+/* ── ADD FORM ─────────────────────────────────────────── */
+.add-form {
+    background: var(--surface);
+    border: 1px solid var(--accent);
+    border-radius: var(--radius);
+    padding: 1.25rem 1.5rem;
+    animation: slideDown .2s ease;
+}
+
+.add-form-inner {
+    display: flex;
+    gap: .75rem;
+    align-items: center;
+}
+
+.add-input {
+    flex: 1;
+    min-height: auto;
+    resize: none;
+}
+
+.add-error {
+    margin-top: .6rem;
+    font-size: .8rem;
+    color: var(--danger);
+}
+
+/* ── LIST ─────────────────────────────────────────────── */
+.themes-list {
+    display: flex;
+    flex-direction: column;
+    gap: .4rem;
+}
+
+/* ── ROW ──────────────────────────────────────────────── */
+.theme-row {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    transition: border-color .15s;
+}
+
+    .theme-row:hover {
+        border-color: var(--border2, #33374a);
+    }
+
+/* view mode */
+.row-view {
+    display: flex;
+    align-items: center;
+    padding: .85rem 1.1rem;
+    gap: 1rem;
+}
+
+.theme-name {
+    flex: 1;
+    font-size: .95rem;
+    font-weight: 500;
+}
+
+.row-actions {
+    display: flex;
+    gap: .4rem;
+    flex-shrink: 0;
+}
+
+.row-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 7px;
+    border: 1px solid var(--border);
+    background: transparent;
+    cursor: pointer;
+    font-size: .9rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background .15s, border-color .15s, color .15s;
+    color: var(--text-muted);
+}
+
+.btn-edit:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: rgba(240,192,64,.1);
+}
+
+.btn-del:hover {
+    border-color: var(--danger);
+    color: var(--danger);
+    background: rgba(224,92,58,.1);
+}
+
+/* edit mode */
+.row-edit {
+    padding: .85rem 1.1rem;
+    display: flex;
+    flex-direction: column;
+    gap: .6rem;
+    animation: slideDown .15s ease;
+}
+
+.edit-input {
+    min-height: auto;
+    resize: none;
+}
+
+.row-edit-btns {
+    display: flex;
+    gap: .5rem;
+}
+
+.btn-sm {
+    padding: .45rem 1rem !important;
+    font-size: .9rem !important;
+}
+
+.edit-error {
+    font-size: .78rem;
+    color: var(--danger);
+}
+
+/* ── EMPTY STATE ──────────────────────────────────────── */
+.empty-state {
+    text-align: center;
+    padding: 3.5rem 2rem;
+    border: 1px dashed var(--border);
+    border-radius: var(--radius);
+}
+
+.empty-icon {
+    font-size: 3rem;
+    color: var(--border);
+    margin-bottom: .75rem;
+}
+
+.empty-state h3 {
+    font-family: var(--font-head);
+    font-size: 1.6rem;
+    margin-bottom: .4rem;
+}
+
+.empty-state p {
+    color: var(--text-muted);
+    font-size: .88rem;
+}
+
+/* ── CONFIRM ──────────────────────────────────────────── */
+.confirm-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.7);
+    z-index: 500;
+    align-items: center;
+    justify-content: center;
+}
+
+    .confirm-overlay.show {
+        display: flex;
+    }
+
+.confirm-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 2rem;
+    max-width: 360px;
+    width: 90%;
+    text-align: center;
+}
+
+    .confirm-box h3 {
+        font-family: var(--font-head);
+        font-size: 1.6rem;
+        margin-bottom: .6rem;
+    }
+
+    .confirm-box p {
+        color: var(--text-muted);
+        font-size: .9rem;
+        line-height: 1.6;
+        margin-bottom: 1.4rem;
+    }
+
+.confirm-btns {
+    display: flex;
+    gap: .75rem;
+    justify-content: center;
+}
+
+/* ── TOAST ────────────────────────────────────────────── */
+.toast {
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+    z-index: 600;
+    background: var(--success);
+    color: #0e0f14;
+    font-family: var(--font-head);
+    font-size: 1rem;
+    letter-spacing: .04em;
+    padding: .65rem 1.4rem;
+    border-radius: 8px;
+    opacity: 0;
+    transform: translateY(12px);
+    transition: all .25s ease;
+    pointer-events: none;
+}
+
+    .toast.show {
+        opacity: 1;
+        transform: none;
+    }
+
+    .toast.error {
+        background: var(--danger);
+        color: #fff;
+    }
+
+/* ── UTILS ────────────────────────────────────────────── */
+.hidden {
+    display: none !important;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-6px);
+    }
+
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}

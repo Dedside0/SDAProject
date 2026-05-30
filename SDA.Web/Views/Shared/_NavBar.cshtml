@@ -33,11 +33,31 @@
         @if (User.IsInRole("Admin"))
         {
             
+        <li class="nav-item-dropdown">
+    <div class="nav-link nav-dropdown-toggle" onclick="toggleAdminMenu(this)">
+        <span class="nav-icon">♛</span>
+        <span>Администрирование</span>
+        <span class="nav-arrow">›</span>
+    </div>
+    <ul class="nav-submenu">
         <li>
-            <a asp-controller="Admin"  asp-action="EditTicket" class="nav-link" data-page="stats">
-                    <span class="nav-icon">♛</span> Администрирование
+            <a asp-controller="Admin" asp-action="EditTicket" class="nav-sublink">
+                <span class="sub-icon">◈</span> Билеты
             </a>
         </li>
+        <li>
+            <a asp-controller="Admin" asp-action="EditTheme" class="nav-sublink">
+                <span class="sub-icon">◉</span> Темы
+            </a>
+        </li>
+        <li>
+            <a asp-controller="Admin" asp-action="EditUser" class="nav-sublink">
+                <span class="sub-icon">◎</span> Пользователи
+            </a>
+        </li>
+    </ul>
+</li>
+
         }
     </ul>
     <div class="sidebar-bottom">
