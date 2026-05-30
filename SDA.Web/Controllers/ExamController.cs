@@ -28,7 +28,7 @@ namespace SDAProject.Controllers
                     {
                         Id = tQuest.QuestionId,
                         Text = tQuest.Question.Text,
-                        ImageUrl = tQuest.Question.ImageUrl,
+                        ImageUrl = tQuest.Question.ImageUrl!,
                         Answers = tQuest.Question.Answers.Select(ans => new AnswerVm()
                         {
                             Id = ans.Id,

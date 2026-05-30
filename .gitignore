@@ -428,3 +428,5 @@ FodyWeavers.xsd
 *.msm
 *.msp
 /SDA.Web/database.db
+/SDA.Web/database.db-shm
+/SDA.Web/database.db-wal

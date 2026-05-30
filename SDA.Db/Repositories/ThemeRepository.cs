@@ -11,15 +11,15 @@ namespace SDA.Db.Repositories
 {
     internal class ThemeRepository(AppContext dbContext): IThemeRepository
     {
-        public async Task<List<QuestionTheme>?> GetAll() =>
+        public async Task<List<Topic>?> GetAll() =>
            await dbContext.Themes
            .AsNoTracking()
            .ToListAsync();
 
-        public async Task<QuestionTheme?> GetById(int id) => await dbContext.Themes.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id);
+        public async Task<Topic?> GetById(int id) => await dbContext.Themes.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id);
 
 
-        public async Task Create(QuestionTheme theme)
+        public async Task Create(Topic theme)
         {
             var existing = await GetById(theme.Id);
             if(existing is not null)
@@ -29,7 +29,7 @@ namespace SDA.Db.Repositories
             await dbContext.SaveChangesAsync();
         }
 
-        public async Task Update(QuestionTheme theme)
+        public async Task Update(Topic theme)
         {
             var existing = await dbContext.Themes.FirstOrDefaultAsync(x => x.Id == theme.Id);
             if (existing is null)

@@ -11,14 +11,14 @@ namespace SDA.Web.Controllers
     [Authorize(Roles = Constants.AdminRoleName)]
     public class AdminController(
         ITicketRepository ticketRepository,
-        IQuestionRepository questionRepository,
+        //IQuestionRepository questionRepository,
         IThemeRepository themeRepository,
         IWebHostEnvironment _env) : Controller
     {
         public async Task<IActionResult> EditTicket()
         {
             var temp = await ticketRepository.GetAll();
-            var allTickets = temp.Select(ticket => new TicketVm()
+            var allTickets = temp?.Select(ticket => new TicketVm()
             {
                 Id = ticket.Id,
                 Name = ticket.Name,
@@ -29,7 +29,7 @@ namespace SDA.Web.Controllers
                     {
                         Id = tQuest.QuestionId,
                         Text = tQuest.Question.Text,
-                        ImageUrl = tQuest.Question.ImageUrl,
+                        ImageUrl = tQuest.Question.ImageUrl!,
                         Answers = tQuest.Question.Answers.Select(ans => new AnswerVm()
                         {
                             Id = ans.Id,
@@ -60,8 +60,8 @@ namespace SDA.Web.Controllers
                         {
                             Text = tqDto.Text,
                             ImageUrl = tqDto.ImageUrl,
-                            Exploration = tqDto.Exploration,
-                            Topic = tqDto.Topic,
+                            Exploration = tqDto.Exploration!,
+                            TopicId = tqDto.ThemeId,
                             Answers = tqDto.Answers.Select(aDto => new Answer
                             {
                                 Text = aDto.Text,
@@ -93,16 +93,17 @@ namespace SDA.Web.Controllers
             try
             {
 
-                var ticket = new Ticket();
-
-                ticket.Name = dto.Name;
-                ticket.Theme = dto.Theme;
-                ticket.Description = dto.Description;
-                ticket.Id = dto.Id;
+                var ticket = new Ticket
+                {
+                    Id = dto.Id,
+                    Name = dto.Name,
+                    Theme = dto.Theme,
+                    Description = dto.Description
+                };
 
                 ticket.TicketQuestions = dto.TicketQuestions.Select(tqDto =>
                 {
-                    var realQuestionId = tqDto.QuestionId.ToString().StartsWith("00000000-0000-0000-0000-")
+                    Guid realQuestionId = tqDto.QuestionId.ToString().StartsWith("00000000")
                         ? Guid.Empty
                         : tqDto.QuestionId;
 
@@ -111,11 +112,11 @@ namespace SDA.Web.Controllers
                         Id = realQuestionId,
                         Text = tqDto.Text,
                         ImageUrl = tqDto.ImageUrl,
-                        Exploration = tqDto.Exploration,
+                        Exploration = tqDto.Exploration!,
+                        TopicId = tqDto.ThemeId,
                         Answers = tqDto.Answers.Select(aDto => new Answer
                         {
-                            Id = aDto.Id.ToString().StartsWith("00000000-0000-0000-0000-") ? Guid.Empty : aDto.Id,
-                            QuestionId = realQuestionId,
+                            Id = aDto.Id.ToString().StartsWith("00000000") ? Guid.Empty : aDto.Id,
                             Text = aDto.Text,
                             IsRight = aDto.IsRight,
                             Order = aDto.Order,
@@ -124,9 +125,8 @@ namespace SDA.Web.Controllers
 
                     return new TicketQuestion
                     {
-                        TicketId = dto.Id,
-                        QuestionId = realQuestionId,
                         Order = tqDto.Order,
+                        QuestionId = realQuestionId,
                         Question = question,
                         Ticket = ticket
                     };
@@ -179,13 +179,14 @@ namespace SDA.Web.Controllers
         }
 
 
+        [ValidateAntiForgeryToken]
         [HttpPost]
         public async Task<IActionResult> CreateTheme(string name)
         {
             try
             {
 
-                var theme = new QuestionTheme { Name = name };
+                var theme = new Topic { Name = name };
                 await  themeRepository.Create(theme);
                 return RedirectToAction("EditTheme");
             }
@@ -196,8 +197,9 @@ namespace SDA.Web.Controllers
         }
 
 
-        [HttpPut]
-        public async Task<IActionResult> UpdateTheme([FromBody] QuestionTheme theme)
+        [ValidateAntiForgeryToken]
+        [HttpPatch]
+        public async Task<IActionResult> UpdateTheme([FromBody] Topic theme)
         {
             try
             {
@@ -210,6 +212,7 @@ namespace SDA.Web.Controllers
             }
         }
 
+        [ValidateAntiForgeryToken]
         [HttpDelete]
         public async Task<IActionResult> DeleteTheme(int id)
         {
@@ -217,6 +220,20 @@ namespace SDA.Web.Controllers
             {
                 await themeRepository.Delete(id);
                 return Ok();
+            }
+            catch
+            {
+                return BadRequest();
+            }
+        }
+        [HttpGet]
+        public async Task<IActionResult> GetAllThemes()
+        {
+            try
+            {
+
+            var themes = await themeRepository.GetAll();
+            return Json(themes);
             }
             catch
             {

@@ -4,10 +4,10 @@ namespace SDA.Db.Repositories
 {
     public interface IThemeRepository
     {
-        Task Create(QuestionTheme question);
-        Task<List<QuestionTheme>?> GetAll();
-        Task<QuestionTheme?> GetById(int id);
-        Task Update(QuestionTheme question);
+        Task Create(Topic question);
+        Task<List<Topic>?> GetAll();
+        Task<Topic?> GetById(int id);
+        Task Update(Topic question);
         Task Delete(int id);
     }
 }

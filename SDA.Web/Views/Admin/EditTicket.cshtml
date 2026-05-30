@@ -13,7 +13,6 @@
     <div class="layout">
         @Html.AntiForgeryToken()
 
-        <!-- ═══ LEFT: TICKET LIST ═══ -->
         <aside class="list-panel">
             <div class="list-header">
                 <div class="list-title">Билеты</div>
@@ -27,7 +26,6 @@
             <button class="add-ticket-btn" onclick="addTicket()">＋ Добавить билет</button>
         </aside>
 
-        <!-- ═══ RIGHT: EDITOR ═══ -->
         <main class="editor-panel" id="editor-panel">
             <div class="empty-editor" id="empty-editor">
                 <div class="empty-glyph">№</div>
@@ -59,26 +57,52 @@
         </div>
     </div>
 
+    <!-- ══════════════════════════════════════════════════
+         THEME PICKER MODAL — одно на всю страницу
+    ══════════════════════════════════════════════════ -->
+    <div class="tp-overlay" id="tp-overlay" onclick="closeThemePicker(event)">
+        <div class="tp-modal">
+
+            <div class="tp-header">
+                <div class="tp-title">Выберите тему</div>
+                <button class="tp-close" onclick="closeThemePickerForce()">✕</button>
+            </div>
+
+            <div class="tp-search-wrap">
+                <span class="tp-search-icon">🔍</span>
+                <input class="tp-search" id="tp-search" type="text"
+                       placeholder="Поиск темы…"
+                       oninput="filterThemes(this.value)" />
+            </div>
+
+            <!-- Нет темы -->
+            <div class="tp-list" id="tp-list">
+                <div class="tp-item tp-no-theme" onclick="pickTheme(null, '')">
+                    <div class="tp-item-icon">○</div>
+                    <div class="tp-item-name">Без темы</div>
+                </div>
+            </div>
+
+            <div class="tp-empty hidden" id="tp-empty">Темы не найдены</div>
+        </div>
+    </div>
+
     <!-- TOAST -->
     <div class="toast" id="toast"></div>
 </div>
 
+
 @section Scripts {
 <script>
-    // ── Список тем билета ──────────────────────────────────────────────────────
-    const TICKET_THEMES = [
-        'Экзамен',
-        'Дорожные знаки',
-        'Разметка',
-        'Перекрёстки',
-        'Маневрирование',
-        'Остановка и стоянка',
-        'Сигналы светофора',
-        'Приоритет',
-        'Буксировка',
-        'Перевозка пассажиров',
-    ];
+    // ── Темы ─────────────────────────────────────────────────────────────────
+    let TICKET_THEMES = [];
 
+    // ── Состояние пикера ──────────────────────────────────────────────────────
+    // Запоминаем tid и qid того вопроса, для которого открыт пикер
+    let _pickerTid = null;
+    let _pickerQid = null;
+
+    // ── Данные из контроллера ─────────────────────────────────────────────────
     let tickets = @Html.Raw(Json.Serialize(Model.Select(t => new {
         id          = t.Id,
         name        = t.Name,
@@ -87,29 +111,147 @@
         questions   = t.TicketQuestions
                        .OrderBy(tq => tq.Order)
                        .Select(tq => new {
-                           id       = tq.QuestionId,
-                           text     = tq.Question.Text,
-                           imageUrl = tq.Question.ImageUrl,
-                           hint     = tq.Question.Exploration ?? "",
-                           topic    = tq.Question.Topic ?? "",
-                           order    = tq.Order,
-                           answers  = tq.Question.Answers
-                                        .OrderBy(a => a.Order)
-                                        .Select(a => new {
-                                            id      = a.Id,
-                                            text    = a.Text,
-                                            correct = a.IsRight,
-                                            order   = a.Order
-                                        })
+                           id        = tq.QuestionId,
+                           text      = tq.Question.Text,
+                           imageUrl  = tq.Question.ImageUrl,
+                           hint      = tq.Question.Exploration ?? "",
+                           themeId   = tq.Question.TopicId != null ? (int?)tq.Question.TopicId : null,
+                           themeName = tq.Question.TopicId != null ? tq.Question.Topic?.Name : "",
+                           order     = tq.Order,
+                           answers   = tq.Question.Answers
+                                         .OrderBy(a => a.Order)
+                                         .Select(a => new {
+                                             id      = a.Id,
+                                             text    = a.Text,
+                                             correct = a.IsRight,
+                                             order   = a.Order
+                                         })
                        })
     })));
 
-    let activeTicketId  = null;
-    let isDirty         = false;
-    let tempCounter     = 0; // счётчик временных ID до сохранения на сервере
+    let activeTicketId = null;
+    let isDirty        = false;
+    let tempCounter    = 0;
 
     function newTempId() {
         return '00000000-0000-0000-0000-' + String(++tempCounter).padStart(12, '0');
+    }
+
+    // ── Загрузка тем ──────────────────────────────────────────────────────────
+    async function fetchThemeNames() {
+        try {
+            const resp = await fetch('/Admin/GetAllThemes');
+            if (!resp.ok) return;
+            TICKET_THEMES = await resp.json(); 
+        } catch (err) {
+            console.error('Не удалось загрузить темы:', err);
+        }
+    }
+
+    /* ════════ THEME PICKER ════════ */
+
+    // Открыть пикер для конкретного вопроса
+    function openThemePicker(tid, qid) {
+        _pickerTid = tid;
+        _pickerQid = qid;
+
+        const t = tickets.find(x => x.id === tid);
+        const q = t?.questions.find(x => x.id === qid);
+        const currentId = q?.themeId ?? null;
+
+        // Сбрасываем поиск
+        document.getElementById('tp-search').value = '';
+
+        // Рендерим список тем
+        renderThemeList('', currentId);
+
+        document.getElementById('tp-overlay').classList.add('show');
+        document.getElementById('tp-search').focus();
+    }
+
+    // Закрыть по клику на фон
+    function closeThemePicker(e) {
+        if (e.target === document.getElementById('tp-overlay')) {
+            closeThemePickerForce();
+        }
+    }
+
+    function closeThemePickerForce() {
+        document.getElementById('tp-overlay').classList.remove('show');
+        _pickerTid = null;
+        _pickerQid = null;
+    }
+
+    // Рендер списка тем с фильтром
+    function renderThemeList(filter, selectedId) {
+        const list    = document.getElementById('tp-list');
+        const empty   = document.getElementById('tp-empty');
+        const filtered = filter
+            ? TICKET_THEMES.filter(th => th.name.toLowerCase().includes(filter.toLowerCase()))
+            : TICKET_THEMES;
+
+        // Всегда показываем «Без темы» первым (если нет фильтра)
+        const noThemeHtml = !filter
+            ? `<div class="tp-item tp-no-theme${selectedId === null ? ' tp-selected' : ''}"
+                    onclick="pickTheme(null,'')">
+                    <div class="tp-item-icon">○</div>
+                    <div class="tp-item-name">Без темы</div>
+                    <span class="tp-check">✓</span>
+               </div>`
+            : '';
+
+        const itemsHtml = filtered.map(th => `
+            <div class="tp-item${th.id === selectedId ? ' tp-selected' : ''}"
+                 onclick="pickTheme(${th.id}, '${esc(th.name)}')">
+                <div class="tp-item-icon">${esc(th.name.charAt(0).toUpperCase())}</div>
+                <div class="tp-item-name">${esc(th.name)}</div>
+                <span class="tp-check">✓</span>
+            </div>`).join('');
+
+        list.innerHTML = noThemeHtml + itemsHtml;
+
+        const hasItems = !!noThemeHtml || filtered.length > 0;
+        empty.classList.toggle('hidden', hasItems);
+    }
+
+    // Фильтрация по строке поиска
+    function filterThemes(value) {
+        const t = tickets.find(x => x.id === _pickerTid);
+        const q = t?.questions.find(x => x.id === _pickerQid);
+        renderThemeList(value, q?.themeId ?? null);
+    }
+
+    // Применить выбранную тему
+    function pickTheme(id, name) {
+        if (!_pickerTid || !_pickerQid) return;
+
+        const t = tickets.find(x => x.id === _pickerTid);
+        if (!t) return;
+        const q = t.questions.find(x => x.id === _pickerQid);
+        if (!q) return;
+
+        q.themeId   = id;    
+        q.themeName = name;
+        setDirty(true);
+
+        // Обновляем кнопку в карточке вопроса
+        updateThemeButton(_pickerQid, id, name);
+
+        closeThemePickerForce();
+    }
+
+    // Обновить внешний вид кнопки выбора темы после выбора
+    function updateThemeButton(qid, id, name) {
+        const btn = document.getElementById('theme-btn-' + qid);
+        if (!btn) return;
+
+        if (!id) {
+            btn.classList.add('tpb-empty');
+            btn.querySelector('.tpb-name').textContent = 'Без темы';
+        } else {
+            btn.classList.remove('tpb-empty');
+            btn.querySelector('.tpb-name').textContent = name;
+        }
     }
 
     /* ════════ RENDER LIST ════════ */
@@ -167,9 +309,8 @@
 
     /* ════════ RENDER EDITOR ════════ */
     function renderEditor(t) {
-        // Строим <option> для темы билета
         const themeOptions = TICKET_THEMES.map(th =>
-            `<option${t.theme === th ? ' selected' : ''}>${esc(th)}</option>`
+            `<option${t.theme === th.name ? ' selected' : ''}>${esc(th.name)}</option>`
         ).join('');
 
         document.getElementById('ticket-editor').innerHTML = `
@@ -217,12 +358,13 @@
 
     /* ════════ RENDER QUESTION CARD ════════ */
     function renderQuestionCard(tid, q, qi) {
-        const letters = ['А', 'Б', 'В', 'Г', 'Д'];
-
-
+        const letters   = ['А', 'Б', 'В', 'Г', 'Д'];
         const answersHtml = q.answers
             .map((a, ai) => renderAnswerRow(tid, q.id, a, ai, letters[ai]))
             .join('');
+
+        const hasTheme  = !!q.themeId;
+        const themeName = q.themeName || 'Без темы';
 
         return `
             <div class="q-card" id="qcard-${q.id}">
@@ -243,24 +385,14 @@
 
                     <div class="field-group">
                         <label>Тема вопроса</label>
-                        <div class="topic-select-wrap">
-                            <input class="field-input"
-                                   list="topics-datalist"
-                                   placeholder="Введите тему или выберите из списка"
-                                   value="${esc(q.topic || '')}"
-                                   oninput="patchQuestion('${tid}','${q.id}','topic',this.value)" />
-                            <datalist id="topics-datalist">
-                                <option value="Дорожные знаки"></option>
-                                <option value="Разметка"></option>
-                                <option value="Перекрёстки"></option>
-                                <option value="Маневрирование"></option>
-                                <option value="Остановка и стоянка"></option>
-                                <option value="Сигналы светофора"></option>
-                                <option value="Приоритет"></option>
-                                <option value="Буксировка"></option>
-                                <option value="Перевозка пассажиров"></option>
-                            </datalist>
-                        </div>
+                        <button type="button"
+                                id="theme-btn-${q.id}"
+                                class="theme-picker-btn${hasTheme ? '' : ' tpb-empty'}"
+                                onclick="openThemePicker('${tid}','${q.id}')">
+                            <span class="tpb-dot"></span>
+                            <span class="tpb-name">${esc(themeName)}</span>
+                            <span class="tpb-arrow">›</span>
+                        </button>
                     </div>
 
                     <div class="field-group">
@@ -311,7 +443,7 @@
             </div>`;
     }
 
-    /* ── Одна строка ответа ───────────────────────────────────────────────── */
+    /* ── Одна строка ответа ──────────────────────────────────────────────────── */
     function renderAnswerRow(tid, qid, a, ai, letter) {
         return `
             <div class="answer-row" id="arow-${qid}-${ai}">
@@ -421,8 +553,6 @@
 
         const ai = q.answers.length;
         const letters = ['А', 'Б', 'В', 'Г', 'Д'];
-
-        // order = текущий индекс, чтобы новый ответ встал последним
         q.answers.push({ id: newTempId(), text: '', correct: false, order: ai });
         setDirty(true);
 
@@ -439,7 +569,6 @@
         if (q.answers.length <= 2) { showToast('Минимум 2 варианта', 'error'); return; }
 
         q.answers.splice(ai, 1);
-        // Пересчитываем order после удаления
         q.answers.forEach((a, i) => a.order = i);
         setDirty(true);
 
@@ -453,8 +582,9 @@
         if (!t) return;
 
         const newQ = {
-            id: newTempId(),
-            text: '', imageUrl: null, hint: '', topic: '', order: t.questions.length,
+            id: newTempId(), text: '', imageUrl: null, hint: '',
+            themeId: null, themeName: '',
+            order: t.questions.length,
             answers: [
                 { id: newTempId(), text: '', correct: true,  order: 0 },
                 { id: newTempId(), text: '', correct: false, order: 1 },
@@ -465,7 +595,7 @@
         t.questions.push(newQ);
         setDirty(true);
 
-        const qi = t.questions.length - 1;
+        const qi  = t.questions.length - 1;
         const div = document.createElement('div');
         div.innerHTML = renderQuestionCard(tid, newQ, qi);
         document.getElementById('questions-container').appendChild(div.firstElementChild);
@@ -493,11 +623,11 @@
         const newT = {
             id: newTempId(),
             name: 'Новый билет',
-            theme: 'Экзамен',   // тема по умолчанию
+            theme: TICKET_THEMES.length > 0 ? TICKET_THEMES[0].name : 'Экзамен',
             description: '',
             questions: [{
-                id: newTempId(),
-                text: '', imageUrl: null, hint: '', topic: '', order: 0,
+                id: newTempId(), text: '', imageUrl: null, hint: '',
+                themeId: null, themeName: '', order: 0,
                 answers: [
                     { id: newTempId(), text: '', correct: true,  order: 0 },
                     { id: newTempId(), text: '', correct: false, order: 1 },
@@ -550,7 +680,7 @@
             `Вопрос «${esc(q.text) || 'Без текста'}» будет удалён.`;
         confirmCallback = () => {
             t.questions = t.questions.filter(x => x.id !== qid);
-            t.questions.forEach((q, idx) => q.order = idx); // пересчитываем order
+            t.questions.forEach((q, idx) => q.order = idx);
             setDirty(true);
             document.getElementById('qcard-' + qid)?.remove();
             const secTitle = document.querySelector('.section-title');
@@ -581,10 +711,11 @@
         const t = tickets.find(x => x.id === activeTicketId);
         if (!t) return;
 
+        const isNewTicket = t.id.startsWith('00000000-0000-0000-0000-');
         const payload = {
-            id:          t.id,
-            name:        t.name,
-            theme:       t.theme,      
+            id: t.id,
+            name: t.name,
+            theme: t.theme,
             description: t.description,
             ticketQuestions: t.questions.map((q, idx) => ({
                 questionId:  q.id,
@@ -592,7 +723,8 @@
                 text:        q.text,
                 imageUrl:    q.imageUrl,
                 exploration: q.hint,
-                topic:       q.topic,
+                themeId:     q.themeId ?? null,
+                themeName:   q.themeName || null,
                 answers: q.answers.map((a, ai) => ({
                     id:      a.id,
                     text:    a.text,
@@ -601,10 +733,10 @@
                 }))
             }))
         };
+        console.log(payload)
 
-        const isNew  = t.id.startsWith('00000000-0000-0000-0000-');
-        const url    = isNew ? '/Admin/CreateTicket' : '/Admin/UpdateTicket';
-        const method = isNew ? 'POST' : 'PUT';
+        const url    = isNewTicket ? '/Admin/CreateTicket' : '/Admin/UpdateTicket';
+        const method = isNewTicket ? 'POST' : 'PATCH';
 
         try {
             const token = document.querySelector('input[name="__RequestVerificationToken"]').value;
@@ -644,17 +776,23 @@
     /* ════════ UTILS ════════ */
     function esc(s) {
         return (s || '')
-            .replace(/&/g,  '&amp;')
-            .replace(/</g,  '&lt;')
-            .replace(/>/g,  '&gt;')
-            .replace(/"/g,  '&quot;');
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
 
-    /* ════════ INIT ════════ */
+    // Закрыть пикер по Escape
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Escape') {
+            closeThemePickerForce();
+            closeConfirm();
+        }
+    });
+
     document.getElementById('confirm-overlay').addEventListener('click', e => {
         if (e.target === document.getElementById('confirm-overlay')) closeConfirm();
     });
 
-    renderList();
+    /* ════════ INIT ════════ */
+    fetchThemeNames().then(() => renderList());
 </script>
 }
