@@ -19,7 +19,7 @@ namespace SDA.Db.Repositories
         public List<QuestionAttempt> GetListById (Guid attemptId)
         {
             return dbContext.QuestionAttempts
-                .Where(qa => qa.AttemptId == attemptId)
+                .Where(qa => qa.ExamAttemptId == attemptId)
                 .ToList();
         }
     }

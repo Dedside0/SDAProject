@@ -11,5 +11,7 @@
         public int WrongCount { get; set; }
         public int CorrectCount { get; set; }
         public int TotalQuestions { get; set; }
+        public List<QuestionAttempt> QuestionAttempts { get; set; } = [];
+        public User User { get; set; }
     }
 }

@@ -147,7 +147,7 @@ namespace SDAProject.Controllers
                 questionAttemptRepository.Create(new QuestionAttempt
                 {
                     Id = Guid.NewGuid(),
-                    AttemptId = attempt.Id,
+                    ExamAttemptId = attempt.Id,
                     QuestionId = qa.QuestionId,
                     SelectedAnswerId = qa.SelectedAnswerId,
                     IsCorrect = qa.IsCorrect,
