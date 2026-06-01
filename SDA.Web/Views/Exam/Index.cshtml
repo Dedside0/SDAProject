@@ -179,7 +179,7 @@ async function handleAnswerClick(e) {
             selectedAnswerId: answerId,
             isCorrect:        data.correct,
             // topic = имя темы из QuestionTheme (может быть null)
-            topic:            qstn.topic?.name ?? "",         
+             topic:            qstn.topic ?? "",  
             answeredAt:       answeredAt,
             timeSpentSeconds: timeSpentSeconds
         };
@@ -211,7 +211,7 @@ function finish() {
             questionId:       questions[i].id,
             selectedAnswerId: null,
             isCorrect:        false,
-            topic:            questions[i].topic?.name ?? "",
+            topic:            questions[i].topic ?? "",
             answeredAt:       new Date().toISOString(),
             timeSpentSeconds: 0
         };

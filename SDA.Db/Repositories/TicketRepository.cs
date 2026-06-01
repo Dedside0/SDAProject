@@ -25,7 +25,11 @@ namespace SDA.Db.Repositories
         public async Task<Ticket?> GetById(Guid id, bool track = false)
         {
             var tickets = track ? ddd.Tickets : ddd.Tickets.AsNoTracking();
-            return await tickets.Include(x => x.TicketQuestions)
+            return await tickets.
+                Include(x => x.TicketQuestions)
+                    .ThenInclude(x => x.Question)
+                        .ThenInclude(x => x.Topic)
+                .Include(x => x.TicketQuestions)
                     .ThenInclude(x => x.Question)
                         .ThenInclude(x => x.Answers)
                 .AsSplitQuery()
