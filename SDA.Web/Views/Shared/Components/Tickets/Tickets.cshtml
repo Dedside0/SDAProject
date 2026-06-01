@@ -1,0 +1,26 @@
+﻿@model List<SDA.Db.Models.Ticket>
+
+       
+<div class="ticket-grid">
+    @foreach (var ticket in Model)
+    {
+        <a asp-controller="Exam"
+               asp-action="Index"
+               asp-route-id="@ticket.Id"
+               class="ticket-card-link"
+               style="text-decoration: none; color: inherit; display: block;">
+       
+            <div class="ticket-card">
+                <div class="ticket-top">
+                    <span class="ticket-number">@ticket.Name</span>
+                    @* <span class="ticket-status success">✓</span> *@  
+                </div>
+
+                <div class="ticket-meta">
+                    Вопросов: @ticket.TicketQuestions.Count()
+                </div>
+            </div>
+        </a>
+    }
+
+</div>

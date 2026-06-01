@@ -1,0 +1,537 @@
+﻿@using System.Text.Json
+@using SDA.Web.Models
+@model ExamResultVm
+
+@{
+    ViewData["Title"] = Model.IsPassed ? "Экзамен сдан!" : "Экзамен не сдан";
+    Layout = "_Layout";
+
+    var accentColor = Model.IsPassed ? "#1d9e75" : "#d85a30";
+    var ringCirc = 2 * Math.PI * 54;
+    var ringFill = ringCirc * Model.Accuracy / 100.0;
+    var ringGap = ringCirc - ringFill;
+
+    // Данные для Chart.js сериализуем здесь, чтобы не писать C# внутри JS
+    var timesJson = JsonSerializer.Serialize(Model.QuestionTimes);
+    var correctJson = JsonSerializer.Serialize(Model.QuestionCorrect);
+    var topicsJson = JsonSerializer.Serialize(
+        Model.TopicStats.Select(t => new { t.Topic, t.Correct, t.Total, t.Accuracy })
+    );
+}
+
+<div class="result-page">
+
+    <!-- ── HERO ────────────────────────────────────────────────── -->
+    <div class="rp-hero">
+        <div class="rp-verdict">
+
+            @if (Model.IsPassed)
+            {
+                <div class="rp-status rp-pass">
+                    <span class="rp-status-icon">✓</span> Сдано
+                </div>
+                <h1 class="rp-heading">Экзамен сдан!</h1>
+                <p class="rp-sub">Отличный результат — вы готовы к настоящему экзамену.</p>
+            }
+            else
+            {
+                <div class="rp-status rp-fail">
+                    <span class="rp-status-icon">✕</span> Не сдано
+                </div>
+                <h1 class="rp-heading">Экзамен не сдан</h1>
+                <p class="rp-sub">Не расстраивайтесь — разберите ошибки и попробуйте ещё раз.</p>
+            }
+
+            <p class="rp-date">@Model.FinishedAt.ToLocalTime().ToString("dd MMMM yyyy, HH:mm")</p>
+        </div>
+
+        <!-- Кольцо точности -->
+        <div class="rp-ring-wrap">
+            <svg width="130" height="130" viewBox="0 0 130 130"
+                 role="img" aria-label="Точность @Model.Accuracy процентов">
+                <circle cx="65" cy="65" r="54" fill="none"
+                        stroke="var(--border)" stroke-width="10" />
+                <circle cx="65" cy="65" r="54" fill="none"
+                        stroke="@accentColor" stroke-width="10"
+                        stroke-linecap="round"
+                        stroke-dasharray="@ringFill.ToString("F1") @ringGap.ToString("F1")"
+                        stroke-dashoffset="84.8"
+                        style="transition:stroke-dasharray .8s ease" />
+            </svg>
+            <div class="rp-ring-label">
+                <span class="rp-ring-pct">@Model.Accuracy<small>%</small></span>
+                <span class="rp-ring-note">точность</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── KPI ──────────────────────────────────────────────────── -->
+    <div class="rp-kpi-grid">
+        <div class="rp-kpi">
+            <div class="rp-kpi-label">✓ Правильно</div>
+            <div class="rp-kpi-val rp-green">@Model.CorrectCount</div>
+        </div>
+        <div class="rp-kpi">
+            <div class="rp-kpi-label">✕ Ошибок</div>
+            <div class="rp-kpi-val rp-red">@Model.WrongCount</div>
+        </div>
+        <div class="rp-kpi">
+            <div class="rp-kpi-label">◷ Время</div>
+            <div class="rp-kpi-val">@Model.TimeDisplay</div>
+        </div>
+        <div class="rp-kpi">
+            <div class="rp-kpi-label">≡ Вопросов</div>
+            <div class="rp-kpi-val">@Model.TotalQuestions</div>
+        </div>
+    </div>
+
+    @if (Model.QuestionTimes.Any() || Model.TopicStats.Any())
+    {
+        <!-- ── ГРАФИКИ ────────────────────────────────────────────── -->
+        <div class="rp-charts-row">
+
+            <!-- Пончик: правильные / ошибки -->
+            <div class="rp-chart-card">
+                <div class="rp-chart-title">Результат по ответам</div>
+                <div class="rp-legend">
+                    <span class="rp-leg-item">
+                        <span class="rp-leg-sq" style="background:#1d9e75"></span>Верно (@Model.CorrectCount)
+                    </span>
+                    <span class="rp-leg-item">
+                        <span class="rp-leg-sq" style="background:#d85a30"></span>Ошибка (@Model.WrongCount)
+                    </span>
+                </div>
+                <div class="rp-canvas-wrap" style="height:200px">
+                    <canvas id="donutChart"
+                            role="img"
+                            aria-label="@Model.CorrectCount правильных и @Model.WrongCount ошибочных из @Model.TotalQuestions">
+                    </canvas>
+                </div>
+            </div>
+
+            @if (Model.QuestionTimes.Any())
+            {
+                <!-- Столбцы: время на вопрос -->
+                <div class="rp-chart-card">
+                    <div class="rp-chart-title">Время на вопрос (сек)</div>
+                    <div class="rp-legend">
+                        <span class="rp-leg-item">
+                            <span class="rp-leg-sq" style="background:#1d9e75"></span>Верно
+                        </span>
+                        <span class="rp-leg-item">
+                            <span class="rp-leg-sq" style="background:#d85a30"></span>Ошибка
+                        </span>
+                    </div>
+                    <div class="rp-canvas-wrap" style="height:200px">
+                        <canvas id="timeChart"
+                                role="img"
+                                aria-label="Время в секундах на каждый отвеченный вопрос">
+                        </canvas>
+                    </div>
+                </div>
+            }
+
+        </div>
+
+        @if (Model.TopicStats.Any())
+        {
+            <!-- Точность по темам -->
+            <div class="rp-chart-card rp-chart-full">
+                <div class="rp-chart-title">Точность по темам</div>
+                <div id="topicsContainer"></div>
+            </div>
+        }
+    }
+
+    <!-- ── КНОПКИ ────────────────────────────────────────────────── -->
+    <div class="rp-actions">
+        <a asp-controller="Exam" asp-action="Index"
+               asp-route-id="@Model."
+               class="btn-secondary">
+            🔄 Попробовать снова
+        </a>
+        <a asp-controller="Home" asp-action="Index" class="btn-primary">
+            На главную
+        </a>
+    </div>
+
+</div>
+
+
+@section Styles {
+<style>
+.result-page {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    max-width: 860px;
+    padding-bottom: 3rem;
+}
+
+/* ── HERO ──────────────────────────────────────────────── */
+.rp-hero {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 2rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 2rem 2.5rem;
+    position: relative;
+    overflow: hidden;
+}
+
+.rp-hero::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at 75% 50%, rgba(240,192,64,.05) 0%, transparent 65%);
+    pointer-events: none;
+}
+
+.rp-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 14px;
+    border-radius: 20px;
+    font-size: .8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    margin-bottom: .65rem;
+}
+
+.rp-pass { background: rgba(62,207,142,.15); color: var(--success); }
+.rp-fail { background: rgba(224,92,58,.15);  color: var(--danger); }
+.rp-status-icon { font-size: .9rem; }
+
+.rp-heading {
+    font-family: var(--font-head);
+    font-size: clamp(2rem, 5vw, 3.5rem);
+    letter-spacing: .03em;
+    line-height: 1;
+    color: var(--text);
+    margin-bottom: .4rem;
+}
+
+.rp-sub  { color: var(--text-muted); font-size: .9rem; line-height: 1.5; }
+.rp-date { color: var(--text-muted); font-size: .78rem; margin-top: .5rem; }
+
+/* Кольцо */
+.rp-ring-wrap {
+    position: relative;
+    width: 130px; height: 130px;
+    flex-shrink: 0;
+}
+
+.rp-ring-label {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+}
+
+.rp-ring-pct {
+    font-family: var(--font-head);
+    font-size: 2rem;
+    letter-spacing: .02em;
+    color: var(--text);
+    line-height: 1;
+}
+
+.rp-ring-pct small { font-size: 1.1rem; }
+.rp-ring-note { font-size: .62rem; text-transform: uppercase; letter-spacing: .1em; color: var(--text-muted); margin-top: 3px; }
+
+/* ── KPI ───────────────────────────────────────────────── */
+.rp-kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: .75rem;
+}
+
+.rp-kpi {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1rem 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: .3rem;
+}
+
+.rp-kpi-label {
+    font-size: .72rem;
+    text-transform: uppercase;
+    letter-spacing: .09em;
+    color: var(--text-muted);
+}
+
+.rp-kpi-val {
+    font-family: var(--font-head);
+    font-size: 2.2rem;
+    letter-spacing: .03em;
+    color: var(--accent);
+    line-height: 1;
+}
+
+.rp-green { color: var(--success) !important; }
+.rp-red   { color: var(--danger)  !important; }
+
+/* ── CHARTS ─────────────────────────────────────────────── */
+.rp-charts-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: .85rem;
+}
+
+.rp-chart-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.25rem 1.5rem;
+}
+
+.rp-chart-full { grid-column: 1 / -1; }
+
+.rp-chart-title {
+    font-family: var(--font-head);
+    font-size: 1rem;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: .75rem;
+}
+
+.rp-legend {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: .75rem;
+}
+
+.rp-leg-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: .78rem;
+    color: var(--text-muted);
+}
+
+.rp-leg-sq {
+    width: 10px; height: 10px;
+    border-radius: 2px;
+    flex-shrink: 0;
+}
+
+.rp-canvas-wrap {
+    position: relative;
+    width: 100%;
+}
+
+/* Темы */
+.topic-row {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    margin-bottom: .6rem;
+    font-size: .88rem;
+}
+
+.topic-name {
+    min-width: 160px;
+    max-width: 160px;
+    color: var(--text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.topic-bar-bg {
+    flex: 1;
+    height: 6px;
+    background: var(--border);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.topic-bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    width: 0%;
+    transition: width .6s ease;
+}
+
+.topic-stat {
+    min-width: 52px;
+    text-align: right;
+    font-size: .78rem;
+    color: var(--text-muted);
+}
+
+/* ── ACTIONS ────────────────────────────────────────────── */
+.rp-actions {
+    display: flex;
+    gap: .75rem;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+}
+
+/* ── RESPONSIVE ─────────────────────────────────────────── */
+@@media (max-width: 680px) {
+    .rp-hero      { flex-direction: column; text-align: center; }
+    .rp-ring-wrap { align-self: center; }
+    .rp-kpi-grid  { grid-template-columns: repeat(2, 1fr); }
+    .rp-charts-row{ grid-template-columns: 1fr; }
+    .rp-actions   { justify-content: stretch; }
+    .rp-actions a { flex: 1; text-align: center; }
+}
+</style>
+}
+
+
+@section Scripts {
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+    <script>
+        // Данные из ViewModel — уже сериализованы в C#
+        const questionTimes   = @Html.Raw(timesJson);
+        const questionCorrect = @Html.Raw(correctJson);
+        const topicStats      = @Html.Raw(topicsJson);
+
+        const correctCount = @Model.CorrectCount;
+        const wrongCount   = @Model.WrongCount;
+
+        // ── Пончик ───────────────────────────────────────────────────────────────
+        const donutCtx = document.getElementById('donutChart');
+        if (donutCtx) {
+        new Chart(donutCtx, {
+        type: 'doughnut',
+        data: {
+        labels: ['Верно', 'Ошибка'],
+        datasets: [{
+        data: [correctCount, wrongCount],
+        backgroundColor: ['#1d9e75', '#d85a30'],
+        borderColor:     ['#1d9e75', '#d85a30'],
+        borderWidth: 2,
+        hoverOffset: 6
+        }]
+        },
+        options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        cutout: '68%',
+        plugins: {
+        legend: { display: false },
+        tooltip: {
+        backgroundColor: '#13141a',
+        borderColor: '#2a2d3a',
+        borderWidth: 1,
+        callbacks: {
+        label: ctx => {
+        const total = correctCount + wrongCount;
+        const pct = total > 0
+        ? Math.round(ctx.raw * 100 / total)
+        : 0;
+        return `${ctx.label}: ${ctx.raw} (${pct}%)`;
+        }
+        }
+        }
+        }
+        }
+        });
+        }
+
+        // ── Столбцы: время на вопрос ──────────────────────────────────────────────
+        const timeCtx = document.getElementById('timeChart');
+        if (timeCtx && questionTimes.length > 0) {
+        const barColors = questionTimes.map((_, i) =>
+        questionCorrect[i] ? '#1d9e75' : '#d85a30'
+        );
+
+        new Chart(timeCtx, {
+        type: 'bar',
+        data: {
+        labels: questionTimes.map((_, i) => i + 1),
+        datasets: [{
+        label: 'Секунды',
+        data: questionTimes,
+        backgroundColor: barColors,
+        borderRadius: 4,
+        borderSkipped: false
+        }]
+        },
+        options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+        legend: { display: false },
+        tooltip: {
+        backgroundColor: '#13141a',
+        borderColor: '#2a2d3a',
+        borderWidth: 1,
+        callbacks: {
+        title: ctx => `Вопрос ${ctx[0].label}`,
+        label: ctx => [
+        `${ctx.raw} сек`,
+        questionCorrect[ctx.dataIndex] ? '✓ Верно' : '✕ Ошибка'
+        ]
+        }
+        }
+        },
+        scales: {
+        x: {
+        grid: { display: false },
+        ticks: {
+        color: '#7a7d90',
+        font: { size: 11 },
+        autoSkip: true,
+        maxTicksLimit: 20
+        }
+        },
+        y: {
+        grid: { color: 'rgba(255,255,255,.05)' },
+        ticks: { color: '#7a7d90', font: { size: 11 } }
+        }
+        }
+        }
+        });
+        }
+
+        // ── Темы: горизонтальные полосы ───────────────────────────────────────────
+        const topicsContainer = document.getElementById('topicsContainer');
+        if (topicsContainer && topicStats.length > 0) {
+        const sorted = [...topicStats].sort((a, b) => b.accuracy - a.accuracy);
+
+        sorted.forEach(t => {
+        const color = t.accuracy >= 80 ? '#1d9e75'
+        : t.accuracy >= 50 ? '#ba7517'
+        :                    '#d85a30';
+
+        const row = document.createElement('div');
+        row.className = 'topic-row';
+        row.innerHTML = `
+        <span class="topic-name" title="${t.topic}">${t.topic}</span>
+        <div class="topic-bar-bg">
+        <div class="topic-bar-fill"
+        style="background:${color}"
+        data-w="${t.accuracy}"></div>
+        </div>
+        <span class="topic-stat">${t.correct}/${t.total}</span>`;
+        topicsContainer.appendChild(row);
+        });
+
+        // Анимируем полосы после вставки в DOM
+        requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+        document.querySelectorAll('.topic-bar-fill').forEach(el => {
+        el.style.width = el.dataset.w + '%';
+        });
+        });
+        });
+        }
+    </script>
+}
