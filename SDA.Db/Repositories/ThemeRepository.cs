@@ -36,6 +36,7 @@ namespace SDA.Db.Repositories
                 throw new KeyNotFoundException($"Тема с Id не найдена.");
 
             existing.Name=theme.Name;
+            existing.Group=theme.Group;
             await dbContext.SaveChangesAsync();
 
         }
@@ -49,5 +50,9 @@ namespace SDA.Db.Repositories
             dbContext.Themes.Remove(existing);
             await dbContext.SaveChangesAsync() ;
         }
+
+        public async Task<Topic?> GetByName(string name) => await dbContext.Themes
+            .AsNoTracking().
+            FirstOrDefaultAsync(x => x.Name .ToLower()== name.ToLower());
     }
 }

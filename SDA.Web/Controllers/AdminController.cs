@@ -174,21 +174,27 @@ namespace SDA.Web.Controllers
         [HttpGet]
         public async Task<IActionResult> EditTheme()
         {
-            var allThemes = await themeRepository.GetAll();
+            var allThemes = (await themeRepository.GetAll()).OrderBy(x=>x.Group).ToList();
             return View(allThemes);
         }
 
 
+        public class TopicDto
+        {
+            public string Name { get; set; }
+            public int Group { get; set; }
+            public int Id { get; set; }
+        }
         [ValidateAntiForgeryToken]
         [HttpPost]
-        public async Task<IActionResult> CreateTheme(string name)
+        public async Task<IActionResult> CreateTheme([FromBody] Topic dto)
         {
             try
             {
 
-                var theme = new Topic { Name = name };
-                await  themeRepository.Create(theme);
-                return RedirectToAction("EditTheme");
+                await  themeRepository.Create(dto);
+                var res = await themeRepository.GetByName(dto.Name);
+                return Json(new {id=res.Id,name=res.Name, group = res.Group});
             }
             catch
             {
