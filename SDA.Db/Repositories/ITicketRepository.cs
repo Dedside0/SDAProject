@@ -6,7 +6,7 @@ namespace SDA.Db.Repositories
     {
         Task Create(Ticket ticket);
         Task<List<Ticket>?> GetAll();
-        Task<Ticket?> GetById(Guid id, bool track);
+        Task<Ticket?> GetById(Guid id, bool track = false);
         Task Update(Ticket ticket);
     }
 }

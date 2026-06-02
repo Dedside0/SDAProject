@@ -81,53 +81,8 @@
             </button>
         </div>
 
-        <div class="ticket-grid">
-
-            <div class="ticket-card" data-ticket="1">
-                <div class="ticket-top">
-                    <span class="ticket-number">Билет 1</span>
-                    <span class="ticket-status success">✓</span>
-                </div>
-
-                <div class="ticket-meta">
-                    20 вопросов
-                </div>
-            </div>
-
-            <div class="ticket-card" data-ticket="2">
-                <div class="ticket-top">
-                    <span class="ticket-number">Билет 2</span>
-                    <span class="ticket-status">82%</span>
-                </div>
-
-                <div class="ticket-meta">
-                    20 вопросов
-                </div>
-            </div>
-
-            <div class="ticket-card" data-ticket="3">
-                <div class="ticket-top">
-                    <span class="ticket-number">Билет 3</span>
-                    <span class="ticket-status">—</span>
-                </div>
-
-                <div class="ticket-meta">
-                    Не пройден
-                </div>
-            </div>
-
-            <div class="ticket-card" data-ticket="4">
-                <div class="ticket-top">
-                    <span class="ticket-number">Билет 4</span>
-                    <span class="ticket-status">—</span>
-                </div>
-
-                <div class="ticket-meta">
-                    Не пройден
-                </div>
-            </div>
-
-        </div>
+       @await Component.InvokeAsync("Tickets")
+       
     </div>
 
     <!-- ТЕМЫ -->

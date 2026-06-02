@@ -59,7 +59,7 @@ namespace SDA.Web
             app.MapStaticAssets();
             app.MapControllerRoute(
                 name: "default",
-                pattern: "{controller=Admin}/{action=EditTicket}/{id?}")
+                pattern: "{controller=Home}/{action=Index}/{id?}")
                 .WithStaticAssets();
 
             app.Run();

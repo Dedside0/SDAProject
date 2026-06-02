@@ -1,8 +1,11 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using SDA.Db.Models;
 using SDA.Db.Repositories;
 using SDA.Web.Models;
 using SDA.Web.Models.DTO;
+using System.Security.Claims;
+using System.Text.Json;
 
 namespace SDAProject.Controllers
 {
@@ -10,13 +13,41 @@ namespace SDAProject.Controllers
     public class ExamController(
         ITicketRepository ticketRepository,
         IQuestionRepository questionRepository,
-        IUserRepository userRepository) : Controller
+        IUserRepository userRepository,
+        IQuestionAttemptRepository questionAttemptRepository,
+        IExamAttemptRepository examAttemptRepository) : Controller
     {
-
-        public async Task<IActionResult> Index()
+        public class FinishExamDto
         {
-            //var ticket = TestDataGenerator.GenerateTestTicket();
-            var ticket = (await ticketRepository.GetAll())[0];
+            public Guid TicketId { get; set; }
+            public int TimeSpentSeconds { get; set; }
+            public string QuestionAttemptsJson { get; set; } = "";
+        }
+
+
+        public class QuestionAttemptDto
+        {
+            public Guid QuestionId { get; set; }
+            public Guid? SelectedAnswerId { get; set; }
+            public bool IsCorrect { get; set; }
+            public string? Topic { get; set; }
+            public DateTime AnsweredAt { get; set; }
+            public int TimeSpentSeconds { get; set; }
+        }
+
+        public class CheckQuestionDto
+        {
+            public Guid QuestionId { get; set; }
+            public Guid AnswerId { get; set; }
+        }
+
+
+        public async Task<IActionResult> Index(Guid id)
+        {
+            var ticket = await ticketRepository.GetById(id);
+            if (ticket is null)
+                return BadRequest();
+
             var ticketVm = new TicketVm()
             {
                 Id = ticket.Id,
@@ -28,11 +59,14 @@ namespace SDAProject.Controllers
                     {
                         Id = tQuest.QuestionId,
                         Text = tQuest.Question.Text,
-                        ImageUrl = tQuest.Question.ImageUrl!,
+                        ImageUrl = tQuest.Question.ImageUrl,
+                        Exploration = tQuest.Question.Exploration,
+                        Topic = tQuest.Question.Topic?.Name,
                         Answers = tQuest.Question.Answers.Select(ans => new AnswerVm()
                         {
                             Id = ans.Id,
-                            Text = ans.Text
+                            Text = ans.Text,
+                            Order = ans.Order
                         }).ToList()
                     }
                 }).ToList()
@@ -41,6 +75,8 @@ namespace SDAProject.Controllers
             return View(ticketVm);
         }
 
+
+        [ValidateAntiForgeryToken]
         [HttpPost]
         public IActionResult CheckQuestion([FromBody] CheckAnswerDTO dto)
         {
@@ -61,26 +97,87 @@ namespace SDAProject.Controllers
 
 
         [HttpPost]
-        public async Task<IActionResult> Finish([FromBody] CheckExamDTO dto)
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> FinishExam(FinishExamDto dto)
         {
-            if (dto is null)
-                return BadRequest();
-            int correct = 0;
-            var answerCount = dto.CheckAnswers.Count();
-            for (int i = 0; i < answerCount; i++)
+            var userId = Guid.Parse(
+                User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+
+            var qaList = new List<QuestionAttemptDto>();
+            if (!string.IsNullOrWhiteSpace(dto.QuestionAttemptsJson))
             {
-                var question = questionRepository.GetById(dto.CheckAnswers[i].QuestionId);
-                if (question is null)
-                    return BadRequest();
-
-                var rightAnswer = question.Answers.FirstOrDefault(x => x.IsRight);
-                if (rightAnswer is null)
-                    return BadRequest();
-
-                if (rightAnswer.Id == dto.CheckAnswers[i].AnswerId)
-                    correct++;
+                qaList = JsonSerializer.Deserialize<List<QuestionAttemptDto>>(
+                    dto.QuestionAttemptsJson,
+                    new JsonSerializerOptions { PropertyNameCaseInsensitive = true }
+                ) ?? new();
             }
-            return Ok(new { correct, incorrect = answerCount - correct, percent = correct / answerCount, passed = correct>=18 });
+
+            int correctCount = 0;
+            int wrongCount = 0;
+
+            foreach (var qa in qaList)
+            {
+                if (qa.SelectedAnswerId == null) continue; 
+                if (qa.IsCorrect) correctCount++;
+                else wrongCount++;
+            }
+
+            int totalQuestions = qaList.Count;
+
+            bool isPassed = wrongCount <= 2;
+
+            var attempt = new ExamAttempt
+            {
+                Id = Guid.NewGuid(),
+                TicketId = dto.TicketId,
+                UserId = userId,
+                FinishedAt = DateTime.UtcNow,
+                IsPassed = isPassed,
+                TimeSpentSeconds = dto.TimeSpentSeconds,
+                CorrectCount = correctCount,
+                WrongCount = wrongCount,
+                TotalQuestions = totalQuestions
+            };
+
+            examAttemptRepository.Create(attempt);
+
+            foreach (var qa in qaList)
+            {
+
+                questionAttemptRepository.Create(new QuestionAttempt
+                {
+                    Id = Guid.NewGuid(),
+                    ExamAttemptId = attempt.Id,
+                    QuestionId = qa.QuestionId,
+                    SelectedAnswerId = qa.SelectedAnswerId,
+                    IsCorrect = qa.IsCorrect,
+                    Topic = qa.Topic,
+                    AnsweredAt = qa.AnsweredAt.Kind == DateTimeKind.Utc
+                                           ? qa.AnsweredAt
+                                           : qa.AnsweredAt.ToUniversalTime()
+                });
+            }
+
+            return RedirectToAction("Result", new { attemptId = attempt.Id });
+        }
+
+
+        [HttpGet]
+        public async Task<IActionResult> Result(Guid attemptId)
+        {
+            var attempt = examAttemptRepository.GetById(attemptId);
+
+            if (attempt == null) return NotFound();
+
+            var userId = Guid.Parse(
+                User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+
+            if (attempt.UserId != userId) return Forbid();
+
+            var questionAttempts = questionAttemptRepository.GetListById(attemptId);
+
+            var vm = ExamResultVm.Build(attempt, questionAttempts);
+            return View(vm);
         }
 
 
