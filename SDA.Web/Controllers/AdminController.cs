@@ -131,7 +131,7 @@ namespace SDA.Web.Controllers
                         Ticket = ticket
                     };
                 }).ToList();
-
+                    
                 await ticketRepository.Update(ticket);
                 return Ok();
 
@@ -157,11 +157,15 @@ namespace SDA.Web.Controllers
 
 
             if (file.Length > 10 * 1024 * 1024)
-                return BadRequest("Файл слишком большой (максимум 5 МБ)");
+                return BadRequest("Файл слишком большой (максимум 10 МБ)");
 
             var fileName = Guid.NewGuid() + Path.GetExtension(file.FileName);
-            var folder = Path.Combine(_env.WebRootPath, "images", "uploads", "questions");
 
+            var folder = Path.Combine(_env.WebRootPath, "images", "uploads", "questions");
+            if (!Directory.Exists(folder))
+            {
+                Directory.CreateDirectory(folder);
+            }
             var fullPath = Path.Combine(folder, fileName);
             using (var stream = new FileStream(fullPath, FileMode.Create))
                 await file.CopyToAsync(stream);

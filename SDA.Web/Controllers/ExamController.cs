@@ -15,7 +15,7 @@ namespace SDAProject.Controllers
         IQuestionRepository questionRepository,
         IUserRepository userRepository,
         IQuestionAttemptRepository questionAttemptRepository,
-        IExamAttemptRepository examAttemptRepository) : Controller
+        IExamAttemptRepository examAttemptRepository ) : Controller
     {
         public class FinishExamDto
         {
