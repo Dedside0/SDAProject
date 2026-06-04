@@ -1,0 +1,52 @@
+﻿@model Registration
+
+@{
+    Layout = "_LayoutAuth";
+}
+
+<div class="auth-tabs">
+    <a class="auth-tab " asp-controller="Account" asp-action="Authorization">Вход</a>
+    <a class="auth-tab active" asp-controller="Account" asp-action="Registration">Регистрация</a>
+</div>
+<form id="register-form" class="auth-form" method="post" asp-controller="Account" asp-action="Registration">
+
+    <div class="form-group">
+        <label class="form-label" asp-for="Name"></label>
+        <input class="form-input" asp-for="Name">
+                    
+        <span asp-validation-for="Name"></span>
+    </div>
+
+    <div class="form-group">
+        <label class="form-label" asp-for="Login">Email</label>
+        <input class="form-input" asp-for="Login">
+                    
+        <span asp-validation-for="Login"></span>
+    </div>
+
+    <div class="form-group">
+        <label class="form-label" asp-for="Password"></label>
+        <div class="form-input-wrap">
+            <input  id="reg-pass" class="form-input" asp-for="Password">
+            <button type="button" class="toggle-password" aria-label="Показать пароль">
+                <img src="~/images/src/eye_open.png" width="22px" height="22px" />
+            </button>
+                        
+            <span asp-validation-for="Password"></span>
+        </div>
+    </div>
+
+    <div class="form-group">
+        <label class="form-label" asp-for="ConfirmPassword"></label>
+        <div class="form-input-wrap">
+            <input id="reg-pass-confirm" class="form-input" asp-for="ConfirmPassword">
+            <button type="button" class="toggle-password" aria-label="Показать пароль">
+                <img src="~/images/src/eye_open.png" width="22px" height="22px" />
+            </button>
+
+            <span asp-validation-for="ConfirmPassword"></span>
+        </div>
+    </div>
+    <button type="submit" class="btn-primary btn-block">Создать аккаунт</button>
+</form>
+

@@ -1,0 +1,393 @@
+﻿@model List<SDA.Db.Models.Topic>
+
+@{
+    ViewData["Title"] = "Темы вопросов";
+}
+
+<div class="themes-page">
+
+    <!-- ── HEADER ──────────────────────────────────────────── -->
+    <div class="page-header">
+        <div class="page-title-block">
+            <h1 class="page-title">Темы</h1>
+            <p class="page-subtitle">
+                Управление темами вопросов · @Model.Count @Plural(Model.Count, "тема", "темы", "тем")
+            </p>
+        </div>
+        <button class="btn-primary" onclick="openAddForm()">＋ Новая тема</button>
+    </div>
+
+    @Html.AntiForgeryToken()
+
+    <!-- ── ADD FORM ─────────────────────────────────────────── -->
+    <div class="add-form" id="add-form" style="display:none">
+        <div class="add-form-inner">
+            <input class="field-input add-input" id="add-input" type="text"
+                   placeholder="Название темы…" maxlength="200"
+                   onkeydown="if(event.key==='Enter')submitAdd();
+                              if(event.key==='Escape')closeAddForm()" />
+            <div class="group-select-wrap">
+                <label class="group-label">Группа</label>
+                <div class="group-btns" id="add-group-btns">
+                    <button type="button" class="group-btn active" data-g="1">1</button>
+                    <button type="button" class="group-btn"        data-g="2">2</button>
+                    <button type="button" class="group-btn"        data-g="3">3</button>
+                    <button type="button" class="group-btn"        data-g="4">4</button>
+                </div>
+            </div>
+            <button class="btn-primary"    onclick="submitAdd()">Добавить</button>
+            <button class="btn-secondary"  onclick="closeAddForm()">Отмена</button>
+        </div>
+        <div class="add-error hidden" id="add-error"></div>
+    </div>
+
+    <!-- ── THEMES LIST ──────────────────────────────────────── -->
+    <div class="themes-list" id="themes-list">
+        @if (!Model.Any())
+        {
+            <div class="empty-state" id="empty-state">
+                <div class="empty-icon">◎</div>
+                <h3>Тем пока нет</h3>
+                <p>Нажмите «Новая тема», чтобы добавить первую</p>
+            </div>
+        }
+
+        @foreach (var theme in Model)
+        {
+            <div class="theme-row" id="row-@theme.Id" data-id="@theme.Id">
+
+                <!-- VIEW MODE -->
+                <div class="row-view" id="view-@theme.Id">
+                    <div class="group-badge group-badge-@theme.Group"
+                         title="Группа @theme.Group">@theme.Group</div>
+                    <div class="theme-name">@theme.Name</div>
+                    <div class="row-actions">
+                        <button class="row-btn btn-edit" title="Редактировать"
+                                onclick="openEdit('@theme.Id', @theme.Group, this)">✎</button>
+                        <button class="row-btn btn-del"  title="Удалить"
+                                onclick="confirmDelete('@theme.Id', '@Html.Raw(theme.Name.Replace("'", "\\'"))')">✕</button>
+                    </div>
+                </div>
+
+                <!-- EDIT MODE -->
+                <div class="row-edit hidden" id="edit-@theme.Id">
+                    <input class="field-input edit-input" type="text"
+                           value="@theme.Name" maxlength="200"
+                           onkeydown="if(event.key==='Enter')submitEdit('@theme.Id');
+                                      if(event.key==='Escape')closeEdit('@theme.Id')" />
+                    <div class="group-select-wrap">
+                        <label class="group-label">Группа</label>
+                        <div class="group-btns" id="edit-group-btns-@theme.Id">
+                            <button type="button" class="group-btn @(theme.Group == 1 ? "active" : "")" data-g="1">1</button>
+                            <button type="button" class="group-btn @(theme.Group == 2 ? "active" : "")" data-g="2">2</button>
+                            <button type="button" class="group-btn @(theme.Group == 3 ? "active" : "")" data-g="3">3</button>
+                            <button type="button" class="group-btn @(theme.Group == 4 ? "active" : "")" data-g="4">4</button>
+                        </div>
+                    </div>
+                    <div class="row-edit-btns">
+                        <button class="btn-primary btn-sm"   onclick="submitEdit('@theme.Id')">Сохранить</button>
+                        <button class="btn-secondary btn-sm" onclick="closeEdit('@theme.Id')">Отмена</button>
+                    </div>
+                    <div class="edit-error hidden" id="edit-error-@theme.Id"></div>
+                </div>
+
+            </div>
+        }
+    </div>
+
+</div>
+
+<!-- ── CONFIRM DIALOG ──────────────────────────────────────── -->
+<div class="confirm-overlay" id="confirm-overlay">
+    <div class="confirm-box">
+        <h3 id="confirm-title">Удалить тему?</h3>
+        <p id="confirm-msg"></p>
+        <div class="confirm-btns">
+            <button class="btn-danger"    id="confirm-yes">Удалить</button>
+            <button class="btn-secondary" onclick="closeConfirm()">Отмена</button>
+        </div>
+    </div>
+</div>
+
+<!-- ── TOAST ───────────────────────────────────────────────── -->
+<div class="toast" id="toast"></div>
+
+
+
+@section Scripts {
+<script>
+    const token = () =>
+        document.querySelector('input[name="__RequestVerificationToken"]').value;
+
+    /* ════════ GROUP BUTTONS ════════
+       Клик по кнопке группы снимает active у сестёр и ставит себе.
+       getGroup(containerId) → число 1-4.
+    ════════════════════════════════ */
+    document.addEventListener('click', e => {
+        const btn = e.target.closest('.group-btn');
+        if (!btn) return;
+        const wrap = btn.closest('.group-btns');
+        wrap.querySelectorAll('.group-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+    });
+
+    function getGroup(containerId) {
+        const active = document.querySelector(`#${containerId} .group-btn.active`);
+        return active ? parseInt(active.dataset.g, 10) : 1;
+    }
+
+    /* ════════ ADD ════════ */
+    function openAddForm() {
+        document.getElementById('add-form').style.display = '';
+        document.getElementById('add-input').focus();
+        
+        setGroupActive('add-group-btns', 1);
+    }
+
+    function closeAddForm() {
+        document.getElementById('add-form').style.display = 'none';
+        document.getElementById('add-input').value = '';
+        showAddError('');
+    }
+
+    async function submitAdd() {
+        const name  = document.getElementById('add-input').value.trim();
+        const group = getGroup('add-group-btns');  
+        console.log(name)
+        if (!name) { showAddError('Введите название темы'); return; }
+
+        try {
+            const resp = await fetch('/Admin/CreateTheme', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'RequestVerificationToken': token()
+                },
+                body: JSON.stringify({ name, group })   
+            });
+
+            if (!resp.ok) {
+                showAddError(await resp.text() || 'Ошибка сервера');
+                return;
+            }
+
+            const created = await resp.json();  // { id, name, group }
+            appendRow(created.id, created.name, created.group);
+            closeAddForm();
+            hideEmpty();
+            showToast('Тема добавлена ✓');
+        } catch {
+            showAddError('Не удалось подключиться к серверу');
+        }
+    }
+
+    function showAddError(msg) {
+        const el = document.getElementById('add-error');
+        el.textContent = msg;
+        el.classList.toggle('hidden', !msg);
+    }
+
+    /* ════════ EDIT ════════ */
+    function openEdit(id, currentGroup) {
+        document.querySelectorAll('.row-edit:not(.hidden)').forEach(el => {
+            const rowId = el.id.replace('edit-', '');
+            if (rowId !== id) closeEdit(rowId);
+        });
+
+        document.getElementById('view-' + id).classList.add('hidden');
+        const editEl = document.getElementById('edit-' + id);
+        editEl.classList.remove('hidden');
+        editEl.querySelector('.edit-input').focus();
+
+        // Выставляем текущую группу
+        setGroupActive('edit-group-btns-' + id, currentGroup);
+    }
+
+    function closeEdit(id) {
+        document.getElementById('view-' + id).classList.remove('hidden');
+        document.getElementById('edit-' + id).classList.add('hidden');
+        showEditError(id, '');
+    }
+
+    async function submitEdit(id) {
+        const input = document.getElementById('edit-' + id).querySelector('.edit-input');
+        const name  = input.value.trim();
+        const group = getGroup('edit-group-btns-' + id);  // число 1-4
+
+        if (!name) { showEditError(id, 'Название не может быть пустым'); return; }
+
+        try {
+            const resp = await fetch('/Admin/UpdateTheme', {
+                    method: 'Patch',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'RequestVerificationToken': token()
+                },
+                body: JSON.stringify({ id, name, group })  // group — число
+            });
+
+            if (!resp.ok) {
+                showEditError(id, await resp.text() || 'Ошибка сервера');
+                return;
+            }
+
+            document.querySelector(`#row-${id} .theme-name`).textContent = name;
+            const badge = document.querySelector(`#row-${id} .group-badge`);
+            badge.textContent =  group;
+            badge.className   = `group-badge group-badge-${group}`;
+            badge.title       = `Группа ${group}`;
+
+            closeEdit(id);
+            showToast('Тема сохранена ✓');
+        } catch {
+            showEditError(id, 'Не удалось подключиться к серверу');
+        }
+    }
+
+    function showEditError(id, msg) {
+        const el = document.getElementById('edit-error-' + id);
+        if (!el) return;
+        el.textContent = msg;
+        el.classList.toggle('hidden', !msg);
+    }
+
+    /* ════════ DELETE ════════ */
+    function confirmDelete(id, name) {
+        document.getElementById('confirm-msg').textContent =
+            `Тема «${name}» будет удалена. Это действие нельзя отменить.`;
+
+        document.getElementById('confirm-yes').onclick = async () => {
+            try {
+                const resp = await fetch(`/Admin/DeleteTheme/${id}`, {
+                    method: 'DELETE',
+                    headers: { 'RequestVerificationToken': token() }
+                });
+
+                if (!resp.ok) {
+                    showToast(await resp.text() || 'Ошибка при удалении', 'error');
+                    closeConfirm();
+                    return;
+                }
+
+                document.getElementById('row-' + id)?.remove();
+                checkEmpty();
+                showToast('Тема удалена');
+            } catch {
+                showToast('Не удалось подключиться к серверу', 'error');
+            }
+            closeConfirm();
+        };
+
+        document.getElementById('confirm-overlay').classList.add('show');
+    }
+
+    function closeConfirm() {
+        document.getElementById('confirm-overlay').classList.remove('show');
+    }
+
+    document.getElementById('confirm-overlay').addEventListener('click', e => {
+        if (e.target === document.getElementById('confirm-overlay')) closeConfirm();
+    });
+
+    /* ════════ DOM HELPERS ════════ */
+    function setGroupActive(containerId, group) {
+        const wrap = document.getElementById(containerId);
+        if (!wrap) return;
+        wrap.querySelectorAll('.group-btn').forEach(b => {
+            b.classList.toggle('active', parseInt(b.dataset.g, 10) === group);
+        });
+    }
+
+    function appendRow(id, name, group) {
+        const list = document.getElementById('themes-list');
+        const div  = document.createElement('div');
+        div.className  = 'theme-row';
+        div.id         = 'row-' + id;
+        div.dataset.id = id;
+        div.innerHTML  = buildRowHtml(id, name, group);
+        console.log(div)
+        list.appendChild(div);
+
+        setGroupActive('edit-group-btns-' + id, group);
+    }
+
+    function buildRowHtml(id, name, group) {
+        return `
+                   <!-- Режим просмотра строки -->
+        <div class="row-view" id="view-${id}">
+            <div class="group-badge group-badge-${group}" title="Группа ${group}">${group}</div>
+            <div class="theme-name">${esc(name)}</div>
+            <div class="row-actions">
+                <button class="row-btn btn-edit" title="Редактировать" onclick="openEdit('${id}', ${group}, this)">✎</button>
+                <button class="row-btn btn-del" title="Удалить" onclick="confirmDelete('${id}', '${esc(name)}')">✕</button>
+            </div>
+        </div>
+
+        <!-- Режим редактирования строки -->
+        <div class="row-edit hidden" id="edit-${id}">
+            <input class="field-input edit-input" type="text" value="${esc(name)}" maxlength="200"
+                onkeydown="if(event.key==='Enter')submitEdit('${id}'); if(event.key==='Escape')closeEdit('${id}')" />
+    
+            <div class="group-select-wrap">
+                <label class="group-label">Группа</label>
+                <div class="group-btns" id="edit-group-btns-${id}">
+                    <button type="button" class="group-btn" data-g="1">1</button>
+                    <button type="button" class="group-btn" data-g="2">2</button>
+                    <button type="button" class="group-btn" data-g="3">3</button>
+                    <button type="button" class="group-btn" data-g="4">4</button>
+                </div>
+            </div>
+    
+            <div class="row-edit-btns">
+                <button class="btn-primary btn-sm" onclick="submitEdit('${id}')">Сохранить</button>
+                <button class="btn-secondary btn-sm" onclick="closeEdit('${id}')">Отмена</button>
+            </div>
+    
+            <div class="edit-error hidden" id="edit-error-${id}"></div>
+        </div>
+        `;
+    }
+
+    function hideEmpty() {
+        document.getElementById('empty-state')?.remove();
+    }
+
+    function checkEmpty() {
+        const list = document.getElementById('themes-list');
+        if (!list.querySelector('.theme-row') && !document.getElementById('empty-state')) {
+            list.innerHTML = `
+                <div class="empty-state" id="empty-state">
+                    <div class="empty-icon">◎</div>
+                    <h3>Тем пока нет</h3>
+                    <p>Нажмите «Новая тема», чтобы добавить первую</p>
+                </div>`;
+        }
+    }
+
+    function esc(s) {
+        return (s || '')
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    /* ════════ TOAST ════════ */
+    function showToast(msg, type = '') {
+        const t = document.getElementById('toast');
+        t.textContent = msg;
+        t.className   = 'toast' + (type ? ' ' + type : '') + ' show';
+        setTimeout(() => t.classList.remove('show'), 2800);
+    }
+</script>
+}
+
+@functions {
+    string Plural(int n, string one, string few, string many) {
+        var m   = Math.Abs(n) % 100;
+        var m10 = m % 10;
+        if (m > 10 && m < 20) return many;
+        if (m10 == 1) return one;
+        if (m10 >= 2 && m10 <= 4) return few;
+        return many;
+    }
+}

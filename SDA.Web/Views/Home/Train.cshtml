@@ -1,0 +1,56 @@
+﻿<!-- ===== TRAIN PAGE ===== -->
+<section class="page" id="page-train">
+    <div class="page-header">
+        <div class="page-title-block">
+            <h1 class="page-title">Тренировка</h1>
+            <p class="page-subtitle">Свободный режим · мгновенная подсказка</p>
+        </div>
+    </div>
+
+    <div id="train-setup" class="setup-panel">
+        <div class="filter-row">
+            <label>Тема:</label>
+            <select id="train-topic-select" class="styled-select">
+                <option value="all">Все темы</option>
+            </select>
+            <label>Вопросов:</label>
+            <select id="train-count-select" class="styled-select">
+                <option value="10">10</option>
+                <option value="20" selected>20</option>
+                <option value="40">40</option>
+                <option value="all">Все</option>
+            </select>
+        </div>
+        <button class="btn-primary" id="start-train-btn">Начать тренировку</button>
+    </div>
+
+    <div id="train-active" class="quiz-container ">
+        <div class="quiz-topbar">
+            <div class="quiz-progress-info">
+                Вопрос <span id="train-q-num">1</span> из <span id="train-q-total">20</span>
+            </div>
+            <div class="quiz-score">✓ <span id="train-score">0</span></div>
+        </div>
+        <div class="progress-bar">
+            <div class="progress-fill" id="train-progress-fill"></div>
+        </div>
+        <div class="question-card" id="train-question-card">
+            <div class="q-image-placeholder" id="train-img"></div>
+            <p class="q-text" id="train-q-text"></p>
+            <ul class="answers-list" id="train-answers"></ul>
+            <div class="hint-box " id="train-hint"></div>
+        </div>
+        <div class="train-nav">
+            <button class="btn-secondary" id="train-prev-btn">← Назад</button>
+            <button class="btn-primary" id="train-next-btn">Далее →</button>
+        </div>
+    </div>
+
+    <div id="train-result" class="result-panel ">
+        <div class="result-icon">★</div>
+        <h2>Тренировка завершена</h2>
+        <p id="train-result-desc"></p>
+        <button class="btn-primary" id="train-retry-btn">Ещё раз</button>
+        <button class="btn-secondary" id="train-home-btn">На главную</button>
+    </div>
+</section>

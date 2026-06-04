@@ -1,0 +1,798 @@
+﻿@using SDA.Db.Models
+@model List<Ticket>
+
+@{
+    ViewData["Title"] = "Администрирование билетов";
+    Layout = "_Layout";
+}
+
+<div>
+    <nav class="topnav">
+        <div class="nav-logo">🚦 Администрирование</div>
+    </nav>
+    <div class="layout">
+        @Html.AntiForgeryToken()
+
+        <aside class="list-panel">
+            <div class="list-header">
+                <div class="list-title">Билеты</div>
+                <div class="list-count" id="list-count"></div>
+            </div>
+            <div class="search-wrap">
+                <input class="search-input" type="text" placeholder="🔍  Поиск по названию…"
+                    oninput="filterTickets(this.value)" />
+            </div>
+            <div class="tickets-list" id="tickets-list"></div>
+            <button class="add-ticket-btn" onclick="addTicket()">＋ Добавить билет</button>
+        </aside>
+
+        <main class="editor-panel" id="editor-panel">
+            <div class="empty-editor" id="empty-editor">
+                <div class="empty-glyph">№</div>
+                <h2>Выберите билет</h2>
+                <p>Нажмите на любой билет слева, чтобы начать редактирование</p>
+            </div>
+            <div id="ticket-editor" style="display:none"></div>
+        </main>
+    </div>
+
+    <!-- SAVE BAR -->
+    <div class="save-bar" id="save-bar">
+        <span class="save-bar-msg">Есть несохранённые изменения</span>
+        <div class="save-bar-actions">
+            <button class="btn-danger" onclick="discardChanges()">Отменить</button>
+            <button class="btn-primary" onclick="saveCurrentTicket()">Сохранить билет</button>
+        </div>
+    </div>
+
+    <!-- CONFIRM DIALOG -->
+    <div class="confirm-overlay" id="confirm-overlay">
+        <div class="confirm-box">
+            <h3 id="confirm-title">Удалить билет?</h3>
+            <p id="confirm-msg">Это действие нельзя отменить.</p>
+            <div class="confirm-btns">
+                <button class="btn-danger" id="confirm-yes-btn">Удалить</button>
+                <button class="btn-secondary" onclick="closeConfirm()">Отмена</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════
+         THEME PICKER MODAL — одно на всю страницу
+    ══════════════════════════════════════════════════ -->
+    <div class="tp-overlay" id="tp-overlay" onclick="closeThemePicker(event)">
+        <div class="tp-modal">
+
+            <div class="tp-header">
+                <div class="tp-title">Выберите тему</div>
+                <button class="tp-close" onclick="closeThemePickerForce()">✕</button>
+            </div>
+
+            <div class="tp-search-wrap">
+                <span class="tp-search-icon">🔍</span>
+                <input class="tp-search" id="tp-search" type="text"
+                       placeholder="Поиск темы…"
+                       oninput="filterThemes(this.value)" />
+            </div>
+
+            <!-- Нет темы -->
+            <div class="tp-list" id="tp-list">
+                <div class="tp-item tp-no-theme" onclick="pickTheme(null, '')">
+                    <div class="tp-item-icon">○</div>
+                    <div class="tp-item-name">Без темы</div>
+                </div>
+            </div>
+
+            <div class="tp-empty hidden" id="tp-empty">Темы не найдены</div>
+        </div>
+    </div>
+
+    <!-- TOAST -->
+    <div class="toast" id="toast"></div>
+</div>
+
+
+@section Scripts {
+<script>
+    // ── Темы ─────────────────────────────────────────────────────────────────
+    let TICKET_THEMES = [];
+
+    // ── Состояние пикера ──────────────────────────────────────────────────────
+    // Запоминаем tid и qid того вопроса, для которого открыт пикер
+    let _pickerTid = null;
+    let _pickerQid = null;
+
+    // ── Данные из контроллера ─────────────────────────────────────────────────
+    let tickets = @Html.Raw(Json.Serialize(Model.Select(t => new {
+        id          = t.Id,
+        name        = t.Name,
+        theme       = t.Theme ?? "Экзамен",
+        description = t.Description ?? "",
+        questions   = t.TicketQuestions
+                       .OrderBy(tq => tq.Order)
+                       .Select(tq => new {
+                           id        = tq.QuestionId,
+                           text      = tq.Question.Text,
+                           imageUrl  = tq.Question.ImageUrl,
+                           hint      = tq.Question.Exploration ?? "",
+                           themeId   = tq.Question.TopicId != null ? (int?)tq.Question.TopicId : null,
+                           themeName = tq.Question.TopicId != null ? tq.Question.Topic?.Name : "",
+                           order     = tq.Order,
+                           answers   = tq.Question.Answers
+                                         .OrderBy(a => a.Order)
+                                         .Select(a => new {
+                                             id      = a.Id,
+                                             text    = a.Text,
+                                             correct = a.IsRight,
+                                             order   = a.Order
+                                         })
+                       })
+    })));
+
+    let activeTicketId = null;
+    let isDirty        = false;
+    let tempCounter    = 0;
+
+    function newTempId() {
+        return '00000000-0000-0000-0000-' + String(++tempCounter).padStart(12, '0');
+    }
+
+    // ── Загрузка тем ──────────────────────────────────────────────────────────
+    async function fetchThemeNames() {
+        try {
+            const resp = await fetch('/Admin/GetAllThemes');
+            if (!resp.ok) return;
+            TICKET_THEMES = await resp.json(); 
+        } catch (err) {
+            console.error('Не удалось загрузить темы:', err);
+        }
+    }
+
+    /* ════════ THEME PICKER ════════ */
+
+    // Открыть пикер для конкретного вопроса
+    function openThemePicker(tid, qid) {
+        _pickerTid = tid;
+        _pickerQid = qid;
+
+        const t = tickets.find(x => x.id === tid);
+        const q = t?.questions.find(x => x.id === qid);
+        const currentId = q?.themeId ?? null;
+
+        // Сбрасываем поиск
+        document.getElementById('tp-search').value = '';
+
+        // Рендерим список тем
+        renderThemeList('', currentId);
+
+        document.getElementById('tp-overlay').classList.add('show');
+        document.getElementById('tp-search').focus();
+    }
+
+    // Закрыть по клику на фон
+    function closeThemePicker(e) {
+        if (e.target === document.getElementById('tp-overlay')) {
+            closeThemePickerForce();
+        }
+    }
+
+    function closeThemePickerForce() {
+        document.getElementById('tp-overlay').classList.remove('show');
+        _pickerTid = null;
+        _pickerQid = null;
+    }
+
+    // Рендер списка тем с фильтром
+    function renderThemeList(filter, selectedId) {
+        const list    = document.getElementById('tp-list');
+        const empty   = document.getElementById('tp-empty');
+        const filtered = filter
+            ? TICKET_THEMES.filter(th => th.name.toLowerCase().includes(filter.toLowerCase()))
+            : TICKET_THEMES;
+
+        // Всегда показываем «Без темы» первым (если нет фильтра)
+        const noThemeHtml = !filter
+            ? `<div class="tp-item tp-no-theme${selectedId === null ? ' tp-selected' : ''}"
+                    onclick="pickTheme(null,'')">
+                    <div class="tp-item-icon">○</div>
+                    <div class="tp-item-name">Без темы</div>
+                    <span class="tp-check">✓</span>
+               </div>`
+            : '';
+
+        const itemsHtml = filtered.map(th => `
+            <div class="tp-item${th.id === selectedId ? ' tp-selected' : ''}"
+                 onclick="pickTheme(${th.id}, '${esc(th.name)}')">
+                <div class="tp-item-icon">${esc(th.name.charAt(0).toUpperCase())}</div>
+                <div class="tp-item-name">${esc(th.name)}</div>
+                <span class="tp-check">✓</span>
+            </div>`).join('');
+
+        list.innerHTML = noThemeHtml + itemsHtml;
+
+        const hasItems = !!noThemeHtml || filtered.length > 0;
+        empty.classList.toggle('hidden', hasItems);
+    }
+
+    // Фильтрация по строке поиска
+    function filterThemes(value) {
+        const t = tickets.find(x => x.id === _pickerTid);
+        const q = t?.questions.find(x => x.id === _pickerQid);
+        renderThemeList(value, q?.themeId ?? null);
+    }
+
+    // Применить выбранную тему
+    function pickTheme(id, name) {
+        if (!_pickerTid || !_pickerQid) return;
+
+        const t = tickets.find(x => x.id === _pickerTid);
+        if (!t) return;
+        const q = t.questions.find(x => x.id === _pickerQid);
+        if (!q) return;
+
+        q.themeId   = id;    
+        q.themeName = name;
+        setDirty(true);
+
+        // Обновляем кнопку в карточке вопроса
+        updateThemeButton(_pickerQid, id, name);
+
+        closeThemePickerForce();
+    }
+
+    // Обновить внешний вид кнопки выбора темы после выбора
+    function updateThemeButton(qid, id, name) {
+        const btn = document.getElementById('theme-btn-' + qid);
+        if (!btn) return;
+
+        if (!id) {
+            btn.classList.add('tpb-empty');
+            btn.querySelector('.tpb-name').textContent = 'Без темы';
+        } else {
+            btn.classList.remove('tpb-empty');
+            btn.querySelector('.tpb-name').textContent = name;
+        }
+    }
+
+    /* ════════ RENDER LIST ════════ */
+    function renderList(filter = '') {
+        const container = document.getElementById('tickets-list');
+        container.innerHTML = '';
+
+        const filtered = filter
+            ? tickets.filter(t => t.name.toLowerCase().includes(filter.toLowerCase()))
+            : tickets;
+
+        const totalQ = tickets.reduce((s, t) => s + t.questions.length, 0);
+        document.getElementById('list-count').textContent =
+            `${tickets.length} билет${plural(tickets.length, '', 'а', 'ов')} · ${totalQ} вопрос${plural(totalQ, '', 'а', 'ов')}`;
+
+        filtered.forEach((t, idx) => {
+            const div = document.createElement('div');
+            div.className = 'ticket-item' + (t.id === activeTicketId ? ' active' : '');
+            div.dataset.id = t.id;
+            div.innerHTML = `
+                <div class="ticket-num">${String(idx + 1).padStart(2, '0')}</div>
+                <div class="ticket-meta">
+                    <div class="ticket-name">${esc(t.name)}</div>
+                    <div class="ticket-info">${t.questions.length} вопр. · ${esc(t.theme)}</div>
+                </div>`;
+            div.onclick = () => openTicket(t.id);
+            container.appendChild(div);
+        });
+    }
+
+    function plural(n, one, few, many) {
+        const m = Math.abs(n) % 100, m10 = m % 10;
+        if (m > 10 && m < 20) return many;
+        if (m10 === 1) return one;
+        if (m10 >= 2 && m10 <= 4) return few;
+        return many;
+    }
+
+    function filterTickets(val) { renderList(val); }
+
+    /* ════════ OPEN TICKET ════════ */
+    function openTicket(id) {
+        if (isDirty && activeTicketId !== id) {
+            if (!confirm('Есть несохранённые изменения. Перейти без сохранения?')) return;
+            setDirty(false);
+        }
+        activeTicketId = id;
+        const t = tickets.find(x => x.id === id);
+        if (!t) return;
+        document.getElementById('empty-editor').style.display = 'none';
+        document.getElementById('ticket-editor').style.display = 'block';
+        renderEditor(t);
+        renderList(document.querySelector('.search-input').value);
+    }
+
+    /* ════════ RENDER EDITOR ════════ */
+    function renderEditor(t) {
+        const themeOptions = TICKET_THEMES.map(th =>
+            `<option${t.theme === th.name ? ' selected' : ''}>${esc(th.name)}</option>`
+        ).join('');
+
+        document.getElementById('ticket-editor').innerHTML = `
+            <div class="editor-top">
+                <div class="editor-top-left">
+                    <div class="editor-label">Название билета</div>
+                    <input class="ticket-title-input" type="text" value="${esc(t.name)}"
+                        placeholder="Введите название…"
+                        oninput="patchTicket('name', this.value)" />
+                </div>
+                <div class="editor-actions">
+                    <button class="btn-danger" onclick="confirmDeleteTicket('${t.id}')">🗑 Удалить</button>
+                    <button class="btn-primary" onclick="saveCurrentTicket()">💾 Сохранить</button>
+                </div>
+            </div>
+
+            <div class="meta-row">
+                <div class="meta-field">
+                    <label>Тема билета</label>
+                    <select class="meta-select" onchange="patchTicket('theme', this.value)">
+                        ${themeOptions}
+                    </select>
+                </div>
+                <div class="meta-field">
+                    <label>ID билета</label>
+                    <input class="meta-input" type="text" value="${esc(t.id)}"
+                        disabled style="opacity:.4;cursor:default"/>
+                </div>
+                <div class="meta-field" style="grid-column:1/-1">
+                    <label>Описание</label>
+                    <textarea class="meta-input" rows="2"
+                        oninput="patchTicket('description', this.value)">${esc(t.description)}</textarea>
+                </div>
+            </div>
+
+            <div class="section-head">
+                <div class="section-title">Вопросы (${t.questions.length})</div>
+                <button class="add-q-btn" onclick="addQuestion('${t.id}')">＋ Добавить вопрос</button>
+            </div>
+
+            <div id="questions-container">
+                ${t.questions.map((q, qi) => renderQuestionCard(t.id, q, qi)).join('')}
+            </div>`;
+    }
+
+    /* ════════ RENDER QUESTION CARD ════════ */
+    function renderQuestionCard(tid, q, qi) {
+        const letters   = ['А', 'Б', 'В', 'Г', 'Д'];
+        const answersHtml = q.answers
+            .map((a, ai) => renderAnswerRow(tid, q.id, a, ai, letters[ai]))
+            .join('');
+
+        const hasTheme  = !!q.themeId;
+        const themeName = q.themeName || 'Без темы';
+
+        return `
+            <div class="q-card" id="qcard-${q.id}">
+                <div class="q-card-head" onclick="toggleQuestion('${q.id}')">
+                    <div class="q-index">${String(qi + 1).padStart(2, '0')}</div>
+                    <div class="q-preview" id="qprev-${q.id}">${esc(q.text) || 'Без текста'}</div>
+                    <div class="q-expand-icon">▾</div>
+                </div>
+                <div class="q-card-body">
+
+                    <div class="field-group">
+                        <label>Текст вопроса</label>
+                        <textarea class="field-input" rows="3"
+                            oninput="patchQuestion('${tid}','${q.id}','text',this.value);
+                                     document.getElementById('qprev-${q.id}').textContent=this.value||'Без текста'"
+                            >${esc(q.text)}</textarea>
+                    </div>
+
+                    <div class="field-group">
+                        <label>Тема вопроса</label>
+                        <button type="button"
+                                id="theme-btn-${q.id}"
+                                class="theme-picker-btn${hasTheme ? '' : ' tpb-empty'}"
+                                onclick="openThemePicker('${tid}','${q.id}')">
+                            <span class="tpb-dot"></span>
+                            <span class="tpb-name">${esc(themeName)}</span>
+                            <span class="tpb-arrow">›</span>
+                        </button>
+                    </div>
+
+                    <div class="field-group">
+                        <label>Изображение (опционально)</label>
+                        <input type="file" accept="image/*" id="file-input-${q.id}" style="display:none"
+                            onchange="uploadImage('${tid}','${q.id}',this)" />
+                        <div class="img-stub" onclick="document.getElementById('file-input-${q.id}').click()">
+                            <div class="img-stub-icon" id="img-icon-${q.id}">🖼</div>
+                            <span id="img-label-${q.id}">${q.imageUrl ? 'Изменить изображение' : 'Нажмите, чтобы добавить'}</span>
+                        </div>
+                        <div id="img-preview-${q.id}" style="${q.imageUrl ? '' : 'display:none'}">
+                            <img src="${q.imageUrl || ''}"
+                                style="max-height:120px;margin-top:8px;border-radius:6px;display:block" />
+                            <button class="del-ans-btn" style="margin-top:6px"
+                                onclick="removeImage('${tid}','${q.id}')">✕ Удалить изображение</button>
+                        </div>
+                    </div>
+
+                    <div class="field-group">
+                        <div class="answers-label">Варианты ответов</div>
+                        <div id="answers-${q.id}">${answersHtml}</div>
+                        <button class="add-ans-btn" onclick="addAnswer('${tid}','${q.id}')">＋ Добавить вариант</button>
+                    </div>
+
+                    <div class="field-group">
+                        <button class="hint-toggle-btn" onclick="toggleHint('${q.id}')">
+                            ${q.hint ? '✎ Редактировать подсказку' : '＋ Добавить подсказку'}
+                        </button>
+                        <div class="hint-field" id="hint-field-${q.id}" style="${q.hint ? '' : 'display:none'}">
+                            <label style="font-size:.68rem;text-transform:uppercase;letter-spacing:.1em;
+                                          color:var(--text-muted);display:block;margin-bottom:.35rem;margin-top:.5rem">
+                                Подсказка / объяснение
+                            </label>
+                            <textarea class="field-input" rows="2"
+                                oninput="patchQuestion('${tid}','${q.id}','hint',this.value)"
+                                >${esc(q.hint || '')}</textarea>
+                        </div>
+                    </div>
+
+                </div>
+                <div class="q-card-foot">
+                    <div class="q-move-btns">
+                        <button class="move-btn" title="Вверх"  onclick="moveQuestion('${tid}','${q.id}',-1)">↑</button>
+                        <button class="move-btn" title="Вниз"   onclick="moveQuestion('${tid}','${q.id}',+1)">↓</button>
+                    </div>
+                    <button class="del-q-btn" onclick="confirmDeleteQuestion('${tid}','${q.id}')">✕ Удалить вопрос</button>
+                </div>
+            </div>`;
+    }
+
+    /* ── Одна строка ответа ──────────────────────────────────────────────────── */
+    function renderAnswerRow(tid, qid, a, ai, letter) {
+        return `
+            <div class="answer-row" id="arow-${qid}-${ai}">
+                <div class="ans-letter-badge">${letter}</div>
+                <input class="ans-text-input" type="text" value="${esc(a.text)}"
+                    placeholder="Вариант ответа…"
+                    oninput="patchAnswer('${tid}','${qid}',${ai},'text',this.value)" />
+                <label class="correct-toggle" title="Правильный ответ">
+                    <input type="checkbox" ${a.correct ? 'checked' : ''}
+                        onchange="patchAnswer('${tid}','${qid}',${ai},'correct',this.checked)" />
+                    <div class="ct-box">✓</div>
+                    <span class="ct-label">Верный</span>
+                </label>
+                <button class="del-ans-btn" title="Удалить"
+                    onclick="deleteAnswer('${tid}','${qid}',${ai})">✕</button>
+            </div>`;
+    }
+
+    /* ════════ TOGGLE HELPERS ════════ */
+    function toggleQuestion(qid) {
+        document.getElementById('qcard-' + qid)?.classList.toggle('open');
+    }
+
+    function toggleHint(qid) {
+        const f = document.getElementById('hint-field-' + qid);
+        if (f) f.style.display = f.style.display === 'none' ? 'block' : 'none';
+    }
+
+    /* ════════ IMAGE UPLOAD ════════ */
+    async function uploadImage(tid, qid, input) {
+        const file = input.files[0];
+        if (!file) return;
+
+        const token = document.querySelector('input[name="__RequestVerificationToken"]').value;
+        document.getElementById('img-label-' + qid).textContent = 'Загрузка…';
+        document.getElementById('img-icon-' + qid).textContent = '⏳';
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        try {
+            const resp = await fetch('/Admin/UploadImage', {
+                method: 'POST',
+                headers: { 'RequestVerificationToken': token },
+                body: formData
+            });
+            if (!resp.ok) throw new Error(await resp.text());
+
+            const { url } = await resp.json();
+            patchQuestion(tid, qid, 'imageUrl', url);
+
+            const preview = document.getElementById('img-preview-' + qid);
+            preview.querySelector('img').src = url;
+            preview.style.display = '';
+            document.getElementById('img-label-' + qid).textContent = 'Изменить изображение';
+            document.getElementById('img-icon-' + qid).textContent = '🖼';
+            showToast('Изображение загружено ✓');
+        } catch (err) {
+            document.getElementById('img-label-' + qid).textContent = 'Нажмите, чтобы добавить';
+            document.getElementById('img-icon-' + qid).textContent = '🖼';
+            showToast('Ошибка загрузки: ' + err.message, 'error');
+        }
+        input.value = '';
+    }
+
+    function removeImage(tid, qid) {
+        patchQuestion(tid, qid, 'imageUrl', null);
+        const preview = document.getElementById('img-preview-' + qid);
+        if (preview) preview.style.display = 'none';
+        document.getElementById('img-label-' + qid).textContent = 'Нажмите, чтобы добавить';
+    }
+
+    /* ════════ PATCH HELPERS ════════ */
+    function patchTicket(key, val) {
+        const t = tickets.find(x => x.id === activeTicketId);
+        if (!t) return;
+        t[key] = val;
+        setDirty(true);
+        if (key === 'name') renderList(document.querySelector('.search-input').value);
+    }
+
+    function patchQuestion(tid, qid, key, val) {
+        const t = tickets.find(x => x.id === tid);
+        if (!t) return;
+        const q = t.questions.find(x => x.id === qid);
+        if (!q) return;
+        q[key] = val;
+        setDirty(true);
+    }
+
+    function patchAnswer(tid, qid, ai, key, val) {
+        const t = tickets.find(x => x.id === tid);
+        if (!t) return;
+        const q = t.questions.find(x => x.id === qid);
+        if (!q || !q.answers[ai]) return;
+        q.answers[ai][key] = val;
+        setDirty(true);
+    }
+
+    /* ════════ ADD / DELETE ════════ */
+    function addAnswer(tid, qid) {
+        const t = tickets.find(x => x.id === tid);
+        if (!t) return;
+        const q = t.questions.find(x => x.id === qid);
+        if (!q) return;
+        if (q.answers.length >= 5) { showToast('Максимум 5 вариантов', 'error'); return; }
+
+        const ai = q.answers.length;
+        const letters = ['А', 'Б', 'В', 'Г', 'Д'];
+        q.answers.push({ id: newTempId(), text: '', correct: false, order: ai });
+        setDirty(true);
+
+        const div = document.createElement('div');
+        div.innerHTML = renderAnswerRow(tid, qid, q.answers[ai], ai, letters[ai]);
+        document.getElementById('answers-' + qid).appendChild(div.firstElementChild);
+    }
+
+    function deleteAnswer(tid, qid, ai) {
+        const t = tickets.find(x => x.id === tid);
+        if (!t) return;
+        const q = t.questions.find(x => x.id === qid);
+        if (!q) return;
+        if (q.answers.length <= 2) { showToast('Минимум 2 варианта', 'error'); return; }
+
+        q.answers.splice(ai, 1);
+        q.answers.forEach((a, i) => a.order = i);
+        setDirty(true);
+
+        const letters = ['А', 'Б', 'В', 'Г', 'Д'];
+        document.getElementById('answers-' + qid).innerHTML =
+            q.answers.map((a, i) => renderAnswerRow(tid, qid, a, i, letters[i])).join('');
+    }
+
+    function addQuestion(tid) {
+        const t = tickets.find(x => x.id === tid);
+        if (!t) return;
+
+        const newQ = {
+            id: newTempId(), text: '', imageUrl: null, hint: '',
+            themeId: null, themeName: '',
+            order: t.questions.length,
+            answers: [
+                { id: newTempId(), text: '', correct: true,  order: 0 },
+                { id: newTempId(), text: '', correct: false, order: 1 },
+                { id: newTempId(), text: '', correct: false, order: 2 },
+                { id: newTempId(), text: '', correct: false, order: 3 }
+            ]
+        };
+        t.questions.push(newQ);
+        setDirty(true);
+
+        const qi  = t.questions.length - 1;
+        const div = document.createElement('div');
+        div.innerHTML = renderQuestionCard(tid, newQ, qi);
+        document.getElementById('questions-container').appendChild(div.firstElementChild);
+        document.getElementById('qcard-' + newQ.id)?.classList.add('open');
+        document.getElementById('qcard-' + newQ.id)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+        const secTitle = document.querySelector('.section-title');
+        if (secTitle) secTitle.textContent = `Вопросы (${t.questions.length})`;
+    }
+
+    function moveQuestion(tid, qid, dir) {
+        const t = tickets.find(x => x.id === tid);
+        if (!t) return;
+        const i = t.questions.findIndex(x => x.id === qid);
+        const j = i + dir;
+        if (j < 0 || j >= t.questions.length) return;
+
+        [t.questions[i], t.questions[j]] = [t.questions[j], t.questions[i]];
+        t.questions.forEach((q, idx) => q.order = idx);
+        setDirty(true);
+        renderEditor(t);
+    }
+
+    function addTicket() {
+        const newT = {
+            id: newTempId(),
+            name: 'Новый билет',
+            theme: TICKET_THEMES.length > 0 ? TICKET_THEMES[0].name : 'Экзамен',
+            description: '',
+            questions: [{
+                id: newTempId(), text: '', imageUrl: null, hint: '',
+                themeId: null, themeName: '', order: 0,
+                answers: [
+                    { id: newTempId(), text: '', correct: true,  order: 0 },
+                    { id: newTempId(), text: '', correct: false, order: 1 },
+                    { id: newTempId(), text: '', correct: false, order: 2 },
+                    { id: newTempId(), text: '', correct: false, order: 3 }
+                ]
+            }]
+        };
+        tickets.push(newT);
+        renderList();
+        openTicket(newT.id);
+    }
+
+    /* ════════ DELETE (confirm) ════════ */
+    let confirmCallback = null;
+
+    function confirmDeleteTicket(id) {
+        const t = tickets.find(x => x.id === id);
+        if (!t) return;
+        document.getElementById('confirm-title').textContent = 'Удалить билет?';
+        document.getElementById('confirm-msg').textContent =
+            `Билет «${t.name}» и все его вопросы будут удалены. Это действие нельзя отменить.`;
+        confirmCallback = async () => {
+            try {
+                const resp = await fetch(`/Admin/Delete/${id}`, { method: 'DELETE' });
+                if (!resp.ok) throw new Error('Ошибка сервера');
+                tickets = tickets.filter(x => x.id !== id);
+                activeTicketId = null;
+                setDirty(false);
+                renderList();
+                document.getElementById('empty-editor').style.display = '';
+                document.getElementById('ticket-editor').style.display = 'none';
+                showToast('Билет удалён');
+            } catch {
+                showToast('Не удалось удалить билет', 'error');
+            }
+            closeConfirm();
+        };
+        document.getElementById('confirm-yes-btn').onclick = confirmCallback;
+        document.getElementById('confirm-overlay').classList.add('show');
+    }
+
+    function confirmDeleteQuestion(tid, qid) {
+        const t = tickets.find(x => x.id === tid);
+        if (!t) return;
+        const q = t.questions.find(x => x.id === qid);
+        if (!q) return;
+        document.getElementById('confirm-title').textContent = 'Удалить вопрос?';
+        document.getElementById('confirm-msg').textContent =
+            `Вопрос «${esc(q.text) || 'Без текста'}» будет удалён.`;
+        confirmCallback = () => {
+            t.questions = t.questions.filter(x => x.id !== qid);
+            t.questions.forEach((q, idx) => q.order = idx);
+            setDirty(true);
+            document.getElementById('qcard-' + qid)?.remove();
+            const secTitle = document.querySelector('.section-title');
+            if (secTitle) secTitle.textContent = `Вопросы (${t.questions.length})`;
+            document.querySelectorAll('.q-card').forEach((c, i) => {
+                const idx = c.querySelector('.q-index');
+                if (idx) idx.textContent = String(i + 1).padStart(2, '0');
+            });
+            showToast('Вопрос удалён');
+            closeConfirm();
+        };
+        document.getElementById('confirm-yes-btn').onclick = confirmCallback;
+        document.getElementById('confirm-overlay').classList.add('show');
+    }
+
+    function closeConfirm() {
+        document.getElementById('confirm-overlay').classList.remove('show');
+        confirmCallback = null;
+    }
+
+    /* ════════ DIRTY / SAVE ════════ */
+    function setDirty(val) {
+        isDirty = val;
+        document.getElementById('save-bar').classList.toggle('visible', val);
+    }
+
+    async function saveCurrentTicket() {
+        const t = tickets.find(x => x.id === activeTicketId);
+        if (!t) return;
+
+        const isNewTicket = t.id.startsWith('00000000-0000-0000-0000-');
+        const payload = {
+            id: t.id,
+            name: t.name,
+            theme: t.theme,
+            description: t.description,
+            ticketQuestions: t.questions.map((q, idx) => ({
+                questionId:  q.id,
+                order:       idx,
+                text:        q.text,
+                imageUrl:    q.imageUrl,
+                exploration: q.hint,
+                themeId:     q.themeId ?? null,
+                themeName:   q.themeName || null,
+                answers: q.answers.map((a, ai) => ({
+                    id:      a.id,
+                    text:    a.text,
+                    isRight: a.correct,
+                    order:   ai          
+                }))
+            }))
+        };
+        console.log(payload)
+
+        const url    = isNewTicket ? '/Admin/CreateTicket' : '/Admin/UpdateTicket';
+        const method = isNewTicket ? 'POST' : 'PATCH';
+
+        try {
+            const token = document.querySelector('input[name="__RequestVerificationToken"]').value;
+            const resp  = await fetch(url, {
+                method,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'RequestVerificationToken': token
+                },
+                body: JSON.stringify(payload)
+            });
+            if (!resp.ok) throw new Error('Ошибка сервера: ' + resp.status);
+            location.reload();
+        } catch (err) {
+            showToast('Ошибка при сохранении: ' + err.message, 'error');
+        }
+    }
+
+    function discardChanges() {
+        if (!confirm('Отменить все несохранённые изменения?')) return;
+        setDirty(false);
+        if (activeTicketId) {
+            const t = tickets.find(x => x.id === activeTicketId);
+            if (t) renderEditor(t);
+        }
+        showToast('Изменения отменены');
+    }
+
+    /* ════════ TOAST ════════ */
+    function showToast(msg, type = '') {
+        const t = document.getElementById('toast');
+        t.textContent = msg;
+        t.className = 'toast' + (type ? ' ' + type : '') + ' show';
+        setTimeout(() => t.classList.remove('show'), 2800);
+    }
+
+    /* ════════ UTILS ════════ */
+    function esc(s) {
+        return (s || '')
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    // Закрыть пикер по Escape
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Escape') {
+            closeThemePickerForce();
+            closeConfirm();
+        }
+    });
+
+    document.getElementById('confirm-overlay').addEventListener('click', e => {
+        if (e.target === document.getElementById('confirm-overlay')) closeConfirm();
+    });
+
+    /* ════════ INIT ════════ */
+    fetchThemeNames().then(() => renderList());
+</script>
+}
