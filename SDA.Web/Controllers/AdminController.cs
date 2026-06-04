@@ -85,7 +85,7 @@ namespace SDA.Web.Controllers
                 return BadRequest("Не удалось создать билет");
             }
         }
-
+         
         [ValidateAntiForgeryToken]
         [HttpPatch]
         public async Task<IActionResult> UpdateTicket([FromBody] SaveTicketDto dto)
