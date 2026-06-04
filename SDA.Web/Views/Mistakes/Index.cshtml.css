@@ -1,0 +1,35 @@
+﻿.answer-item.correct {
+    background-color: #d4edda;
+    border-color: #28a745;
+}
+
+.answer-item.wrong {
+    background-color: #f8d7da;
+    border-color: #dc3545;
+}
+
+.answer-item.show-correct {
+    background-color: #d1ecf1;
+    border-color: #17a2b8;
+}
+
+.answer-item {
+    transition: all 0.3s ease;
+}
+
+/* Пояснение */
+.explanation-box {
+    animation: fadeIn 0.5s ease;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}

@@ -1,0 +1,340 @@
+﻿@using System.Text.Json;
+@using System.Text.Json.Serialization
+@model List<SDA.Db.Models.Question>
+
+<div class="content-exam" id="mainContent">
+    <div id="testPage" class="test-container">
+
+        <div class="ticket-header">
+            <div class="ticket-title" id="ticketNumberLabel">Работа над ошибками</div>
+            <div class="test-meta">
+                <div class="quiz-timer" id="timerDisplay">20:00</div>
+            </div>
+        </div>
+
+        <div class="question-progress">
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+            <div class="q-counter" id="questionCounter">1 / @Model.Count()</div>
+        </div>
+
+        @Html.AntiForgeryToken()
+
+        <form id="finishForm" method="post" action="/Mistakes/FinishReview" style="display:none">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="TimeSpentSeconds" id="f_TimeSpent" />
+            <input type="hidden" name="QuestionAttemptsJson" id="f_QAttemptsJson" />
+        </form>
+
+        <div id="quizMainArea">
+            <div class="question-card" id="questionCard">
+                <div id="imageContainer"></div>
+                <div class="q-text" id="questionText"></div>
+                <ul class="answers-list" id="answersList"></ul>
+                <div class="explanation-box" id="explanationBox" style="display:none; margin-top: 1rem; padding: 1rem; background: #f0f7ff; border-radius: 8px;">
+                    <strong>📖 Пояснение:</strong>
+                    <p id="explanationText"></p>
+                </div>
+            </div>
+        </div>
+
+        <div class="test-nav">
+            <button class="btn-secondary" id="prevQuestionBtn">◀ Назад</button>
+            <div class="question-dots" id="dotsContainer"></div>
+            <button class="btn-primary" id="nextQuestionBtn">Вперёд ▶</button>
+        </div>
+
+        <div style="margin-top:1rem;display:flex;justify-content:flex-end">
+            <button class="btn-primary" id="submitExamBtn"
+                    style="background:var(--danger);color:white">
+                Завершить работу над ошибками
+            </button>
+        </div>
+
+    </div>
+</div>
+
+@section Scripts {
+<script>
+// Сериализуем вопросы в JavaScript
+const questions = @Html.Raw(JsonSerializer.Serialize(Model, new JsonSerializerOptions {
+    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+    ReferenceHandler = ReferenceHandler.IgnoreCycles
+}));
+console.log(questions);
+const $$ = id => document.getElementById(id);
+
+const els = {
+    timer:      $$("timerDisplay"),
+    progress:   $$("progressFill"),
+    counter:    $$("questionCounter"),
+    question:   $$("questionText"),
+    answers:    $$("answersList"),
+    image:      $$("imageContainer"),
+    dots:       $$("dotsContainer"),
+    ticket:     $$("ticketNumberLabel"),
+    quiz:       $$("quizMainArea"),
+    explanationBox: $$("explanationBox"),
+    explanationText: $$("explanationText")
+};
+
+let index = 0;
+let time = 20 * 60; // 20 минут на все вопросы
+let finished = false;
+let timer;
+
+// Храним выбранные ответы
+const answers = Array(questions.length).fill(null);
+
+// Храним результат проверки для UI
+const checkedAnswers = Array(questions.length).fill(null);
+
+// Храним попытки для отправки на сервер
+const questionAttempts = Array(questions.length).fill(null);
+
+let questionStartTime = Date.now();
+const examStartTime = Date.now();
+
+// ──────────────────────────────────────────────────────────────────────────
+els.ticket.textContent = "Работа над ошибками";
+
+function allAnswered() {
+    return answers.every(a => a !== null);
+}
+
+function render() {
+    const qstn = questions[index];
+    const selected = answers[index];
+    const checked = checkedAnswers[index];
+
+    els.question.textContent = `${index + 1}. ${qstn.text}`;
+
+    // Изображение
+    els.image.innerHTML = qstn.imageUrl
+        ? `<img src="${qstn.imageUrl}" class="q-image" style="max-width:100%; max-height:200px; object-fit:contain;">`
+        : `<div class="q-image-placeholder">📖 Нет изображения</div>`;
+
+    // Варианты ответов
+    els.answers.innerHTML = (qstn.answers || []).map((a, i) => {
+        let cls = "";
+        let letter = String.fromCharCode(1040 + i); // А, Б, В, Г...
+        
+        if (checked !== null) {
+            if (selected && selected.answerId === a.id) {
+                cls = checked.correct ? "correct" : "wrong";
+            }
+            if (checked.correctId === a.id) {
+                cls += " show-correct";
+            }
+        }
+        
+        return `
+            <li class="answer-item ${cls}" data-answer-id="${a.id}">
+                <span class="answer-letter">${letter}</span>
+                <span class="answer-text">${escapeHtml(a.text)}</span>
+            </li>`;
+    }).join("");
+
+    // Показываем пояснение, если вопрос уже отвечен
+    if (checked !== null && qstn.explanation) {
+        els.explanationBox.style.display = "block";
+        els.explanationText.innerHTML = escapeHtml(qstn.explanation);
+    } else {
+        els.explanationBox.style.display = "none";
+    }
+
+    renderDots();
+    updateProgress();
+    updateNextButton();
+    attachAnswerEvents();
+
+    questionStartTime = Date.now();
+}
+
+// Функция для экранирования HTML
+function escapeHtml(text) {
+    if (!text) return "";
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function attachAnswerEvents() {
+    document.querySelectorAll(".answer-item").forEach(item => {
+        item.removeEventListener("click", handleAnswerClick);
+        item.addEventListener("click", handleAnswerClick);
+    });
+}
+
+async function handleAnswerClick(e) {
+    const li = e.currentTarget;
+    if (finished) return;
+    if (answers[index] !== null) return; // уже отвечен
+
+    const answerId = li.dataset.answerId;
+    const questionId = questions[index].id;
+    const answeredAt = new Date().toISOString();
+    const timeSpentSeconds = Math.round((Date.now() - questionStartTime) / 1000);
+
+    try {
+        const token = document.querySelector('input[name="__RequestVerificationToken"]').value;
+
+        const response = await fetch('/Mistakes/CheckQuestion', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'RequestVerificationToken': token
+            },
+            body: JSON.stringify({ QuestionId: questionId, AnswerId: answerId })
+        });
+
+        if (!response.ok) { 
+            alert("Ошибка проверки"); 
+            return; 
+        }
+
+        const data = await response.json();
+        
+        // Сохраняем ответ
+        answers[index] = { questionId, answerId };
+
+        // Сохраняем попытку для отправки
+        const qstn = questions[index];
+        questionAttempts[index] = {
+            questionId: questionId,
+            selectedAnswerId: answerId,
+            isCorrect: data.correct,
+            topic: qstn.topic ?? "",
+            answeredAt: answeredAt,
+            timeSpentSeconds: timeSpentSeconds
+        };
+
+        // Сохраняем для UI
+        checkedAnswers[index] = {
+            correct: data.correct,
+            correctId: data.correctId
+        };
+
+        render();
+
+        // Автоматический переход к следующему вопросу через 1.5 секунды
+        if (!finished && index < questions.length - 1) {
+            setTimeout(() => {
+                if (!finished && !allAnswered()) {
+                    next();
+                }
+            }, 1500);
+        }
+
+    } catch (err) {
+        console.error(err);
+        alert("Произошла ошибка при проверке ответа");
+    }
+}
+
+function finish() {
+    if (finished) return;
+    finished = true;
+    clearInterval(timer);
+
+    const totalSeconds = Math.round((Date.now() - examStartTime) / 1000);
+
+    // Формируем попытки для непросмотренных вопросов
+    const attemptsPayload = questionAttempts.map((qa, i) => {
+        if (qa !== null) return qa;
+        return {
+            questionId: questions[i].id,
+            selectedAnswerId: null,
+            isCorrect: false,
+            topic: questions[i].topic ?? "",
+            answeredAt: new Date().toISOString(),
+            timeSpentSeconds: 0
+        };
+    });
+
+    $$("f_TimeSpent").value = totalSeconds;
+    $$("f_QAttemptsJson").value = JSON.stringify(attemptsPayload);
+
+    $$("finishForm").submit();
+}
+
+const nextBtn = $$("nextQuestionBtn");
+
+function updateNextButton() {
+    nextBtn.disabled = index === questions.length - 1 && !allAnswered();
+}
+
+nextBtn.onclick = next;
+$$("prevQuestionBtn").onclick = prev;
+
+$$("submitExamBtn").onclick = () => {
+    if (!finished && confirm("Завершить работу над ошибками?")) finish();
+};
+
+function renderDots() {
+    els.dots.innerHTML = questions.map((_, i) => `
+        <div class="q-dot ${i === index ? "current" : ""} ${answers[i] !== null ? "answered" : ""}"
+             onclick="goTo(${i})">${i + 1}</div>
+    `).join("");
+}
+
+function updateProgress() {
+    const answered = answers.filter(x => x !== null).length;
+    const percent = questions.length > 0 ? (answered / questions.length * 100) : 0;
+    els.progress.style.width = `${percent}%`;
+    els.counter.textContent = `${index + 1} / ${questions.length}`;
+}
+
+function goTo(i) { 
+    if (!finished && (!checkedAnswers[index] || index !== i)) { 
+        index = i; 
+        render(); 
+    } 
+}
+
+function next() {
+    if (finished) return;
+    if (index < questions.length - 1) { 
+        index++; 
+        render(); 
+    } else if (allAnswered()) {
+        if (confirm("Вы ответили на все вопросы. Завершить работу над ошибками?")) 
+            finish();
+    } else {
+        alert("Ответьте на текущий вопрос, прежде чем завершить");
+    }
+}
+
+function prev() {
+    if (finished || index === 0) return;
+    index--;
+    render();
+}
+
+function updateTimer() {
+    const m = String(Math.floor(time / 60)).padStart(2, "0");
+    const s = String(time % 60).padStart(2, "0");
+    els.timer.textContent = `${m}:${s}`;
+    els.timer.classList.toggle("danger", time <= 60);
+}
+
+function startTimer() {
+    updateTimer();
+    timer = setInterval(() => {
+        if (finished) return;
+        if (time <= 0) { 
+            finish(); 
+            return; 
+        }
+        time--;
+        updateTimer();
+    }, 1000);
+}
+
+// Запускаем
+render();
+startTimer();
+</script>
+}
+
