@@ -15,7 +15,8 @@ namespace SDAProject.Controllers
         IQuestionRepository questionRepository,
         IUserRepository userRepository,
         IQuestionAttemptRepository questionAttemptRepository,
-        IExamAttemptRepository examAttemptRepository) : Controller
+        IExamAttemptRepository examAttemptRepository,
+        IUserMistakeQueueRepository userMistakeQueueRepository) : Controller
     {
         public class FinishExamDto
         {
@@ -143,8 +144,7 @@ namespace SDAProject.Controllers
 
             foreach (var qa in qaList)
             {
-
-                questionAttemptRepository.Create(new QuestionAttempt
+                var qstAttempt = new QuestionAttempt
                 {
                     Id = Guid.NewGuid(),
                     ExamAttemptId = attempt.Id,
@@ -155,7 +155,18 @@ namespace SDAProject.Controllers
                     AnsweredAt = qa.AnsweredAt.Kind == DateTimeKind.Utc
                                            ? qa.AnsweredAt
                                            : qa.AnsweredAt.ToUniversalTime()
-                });
+                };
+                questionAttemptRepository.Create(qstAttempt);
+                if(qstAttempt.IsCorrect == false)
+                {
+                    userMistakeQueueRepository.Create(new UserMistakeQueue
+                    {
+                        AddedAt = qstAttempt.AnsweredAt,
+                        IsMastered = false,
+                        QuestionId = qa.QuestionId,
+                        UserId = userId
+                    });
+                }
             }
 
             return RedirectToAction("Result", new { attemptId = attempt.Id });

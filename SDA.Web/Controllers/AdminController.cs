@@ -157,11 +157,15 @@ namespace SDA.Web.Controllers
 
 
             if (file.Length > 10 * 1024 * 1024)
-                return BadRequest("Файл слишком большой (максимум 5 МБ)");
+                return BadRequest("Файл слишком большой (максимум 10 МБ)");
 
             var fileName = Guid.NewGuid() + Path.GetExtension(file.FileName);
-            var folder = Path.Combine(_env.WebRootPath, "images", "uploads", "questions");
 
+            var folder = Path.Combine(_env.WebRootPath, "images", "uploads", "questions");
+            if (!Directory.Exists(folder))
+            {
+                Directory.CreateDirectory(folder);
+            }
             var fullPath = Path.Combine(folder, fileName);
             using (var stream = new FileStream(fullPath, FileMode.Create))
                 await file.CopyToAsync(stream);
@@ -174,7 +178,7 @@ namespace SDA.Web.Controllers
         [HttpGet]
         public async Task<IActionResult> EditTheme()
         {
-            var allThemes = (await themeRepository.GetAll()).OrderBy(x=>x.Group).ToList();
+            var allThemes = (await themeRepository.GetAll()).OrderBy(x => x.Group).ToList();
             return View(allThemes);
         }
 
@@ -192,9 +196,9 @@ namespace SDA.Web.Controllers
             try
             {
 
-                await  themeRepository.Create(dto);
+                await themeRepository.Create(dto);
                 var res = await themeRepository.GetByName(dto.Name);
-                return Json(new {id=res.Id,name=res.Name, group = res.Group});
+                return Json(new { id = res.Id, name = res.Name, group = res.Group });
             }
             catch
             {
@@ -237,9 +241,8 @@ namespace SDA.Web.Controllers
         {
             try
             {
-
-            var themes = await themeRepository.GetAll();
-            return Json(themes);
+                var themes = await themeRepository.GetAll();
+                return Json(themes);
             }
             catch
             {
