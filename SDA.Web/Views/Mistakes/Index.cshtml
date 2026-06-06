@@ -3,56 +3,74 @@
 @model List<SDA.Db.Models.Question>
 
 <div class="content-exam" id="mainContent">
+
     <div id="testPage" class="test-container">
-
-        <div class="ticket-header">
-            <div class="ticket-title" id="ticketNumberLabel">Работа над ошибками</div>
-            <div class="test-meta">
-                <div class="quiz-timer" id="timerDisplay">20:00</div>
-            </div>
+        @if (Model is null || Model.Count() == 0)
+        {
+             <div class="page-header">
+        <div class="page-title-block">
+            <h1 class="page-title">Работа<br>над ошибками</h1>
+            <p class="page-subtitle">Только вопросы, в которых вы ошибались</p>
         </div>
+    </div>
 
-        <div class="question-progress">
-            <div class="progress-bar">
-                <div class="progress-fill" id="progressFill"></div>
-            </div>
-            <div class="q-counter" id="questionCounter">1 / @Model.Count()</div>
-        </div>
-
-        @Html.AntiForgeryToken()
-
-        <form id="finishForm" method="post" action="/Mistakes/FinishReview" style="display:none">
-            @Html.AntiForgeryToken()
-            <input type="hidden" name="TimeSpentSeconds" id="f_TimeSpent" />
-            <input type="hidden" name="QuestionAttemptsJson" id="f_QAttemptsJson" />
-        </form>
-
-        <div id="quizMainArea">
-            <div class="question-card" id="questionCard">
-                <div id="imageContainer"></div>
-                <div class="q-text" id="questionText"></div>
-                <ul class="answers-list" id="answersList"></ul>
-                <div class="explanation-box" id="explanationBox" style="display:none; margin-top: 1rem; padding: 1rem; background: #f0f7ff; border-radius: 8px;">
-                    <strong>📖 Пояснение:</strong>
-                    <p id="explanationText"></p>
+    <div id="mistakes-empty" class="empty-state">
+        <div class="empty-icon">◎</div>
+        <h3>Ошибок нет!</h3>
+        <p>Пройдите экзамен или тренировку, чтобы здесь появились вопросы для повторения.</p>
+    </div>
+        }
+        else
+        {
+            <div class="ticket-header">
+                <div class="ticket-title" id="ticketNumberLabel">Работа над ошибками</div>
+                <div class="test-meta">
+                    <div class="quiz-timer" id="timerDisplay">20:00</div>
                 </div>
             </div>
-        </div>
 
-        <div class="test-nav">
-            <button class="btn-secondary" id="prevQuestionBtn">◀ Назад</button>
-            <div class="question-dots" id="dotsContainer"></div>
-            <button class="btn-primary" id="nextQuestionBtn">Вперёд ▶</button>
-        </div>
+            <div class="question-progress">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+                <div class="q-counter" id="questionCounter">1 / @Model.Count()</div>
+            </div>
 
-        <div style="margin-top:1rem;display:flex;justify-content:flex-end">
-            <button class="btn-primary" id="submitExamBtn"
-                    style="background:var(--danger);color:white">
-                Завершить работу над ошибками
-            </button>
-        </div>
+            @Html.AntiForgeryToken()
 
+            <form id="finishForm" method="post" action="/Mistakes/FinishReview" style="display:none">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="TimeSpentSeconds" id="f_TimeSpent" />
+                <input type="hidden" name="QuestionAttemptsJson" id="f_QAttemptsJson" />
+            </form>
+
+            <div id="quizMainArea">
+                <div class="question-card" id="questionCard">
+                    <div id="imageContainer"></div>
+                    <div class="q-text" id="questionText"></div>
+                    <ul class="answers-list" id="answersList"></ul>
+                    <div class="explanation-box" id="explanationBox" style="display:none; margin-top: 1rem; padding: 1rem; background: #f0f7ff; border-radius: 8px;">
+                        <strong>📖 Пояснение:</strong>
+                        <p id="explanationText"></p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="test-nav">
+                <button class="btn-secondary" id="prevQuestionBtn">◀ Назад</button>
+                <div class="question-dots" id="dotsContainer"></div>
+                <button class="btn-primary" id="nextQuestionBtn">Вперёд ▶</button>
+            </div>
+
+            <div style="margin-top:1rem;display:flex;justify-content:flex-end">
+                <button class="btn-primary" id="submitExamBtn"
+                style="background:var(--danger);color:white">
+                    Завершить работу над ошибками
+                </button>
+            </div>
+        }
     </div>
+
 </div>
 
 @section Scripts {
@@ -62,7 +80,6 @@ const questions = @Html.Raw(JsonSerializer.Serialize(Model, new JsonSerializerOp
     PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
     ReferenceHandler = ReferenceHandler.IgnoreCycles
 }));
-console.log(questions);
 const $$ = id => document.getElementById(id);
 
 const els = {
@@ -180,7 +197,7 @@ async function handleAnswerClick(e) {
     try {
         const token = document.querySelector('input[name="__RequestVerificationToken"]').value;
 
-        const response = await fetch('/Mistakes/CheckQuestion', {
+        const response = await fetch('/Exam/CheckQuestion', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -242,6 +259,7 @@ function finish() {
 
     // Формируем попытки для непросмотренных вопросов
     const attemptsPayload = questionAttempts.map((qa, i) => {
+        console.log(qa)
         if (qa !== null) return qa;
         return {
             questionId: questions[i].id,
@@ -252,7 +270,7 @@ function finish() {
             timeSpentSeconds: 0
         };
     });
-
+        console.log(attemptsPayload)
     $$("f_TimeSpent").value = totalSeconds;
     $$("f_QAttemptsJson").value = JSON.stringify(attemptsPayload);
 

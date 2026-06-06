@@ -26,15 +26,30 @@ namespace SDA.Db.Repositories
 
         public UserMistakeQueue? GetById(Guid id)
         {
-            var existing = dbContext.MistakeQueue.AsNoTracking().FirstOrDefault(x => x.Id == id);
+            var existing = dbContext.MistakeQueue.AsNoTracking().FirstOrDefault(x => x.Id == id && x.IsMastered == false);
 
             return existing;
         }
 
         public List<UserMistakeQueue>? GetAllByUserId(Guid id)
         {
-            var existing = dbContext.MistakeQueue.AsNoTracking().Where(x => x.UserId == id).ToList();
+            var existing = dbContext.MistakeQueue.AsNoTracking().Where(x => x.UserId == id && x.IsMastered == false).ToList();
             return existing;
+        }
+
+        public  UserMistakeQueue? GetUserMistake(Guid userId, Guid questionId)
+        {
+            return dbContext.MistakeQueue
+                    .FirstOrDefault(m => m.UserId == userId
+                        && m.QuestionId == questionId
+                        && !m.IsMastered);
+        }
+
+        public void SetAsMastered(Guid id)
+        {
+            var mstk = dbContext.MistakeQueue.Find(id);
+            mstk.IsMastered = true;
+            dbContext.SaveChanges();
         }
 
     }

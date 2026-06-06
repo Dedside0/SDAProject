@@ -8,5 +8,7 @@ namespace SDA.Db.Repositories
         void Delete(Guid id);
         UserMistakeQueue? GetById(Guid id);
         List<UserMistakeQueue>? GetAllByUserId(Guid id);
+        UserMistakeQueue? GetUserMistake(Guid userId, Guid questionId);
+        void SetAsMastered(Guid id);
     }
 }

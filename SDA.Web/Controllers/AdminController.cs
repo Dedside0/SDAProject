@@ -131,7 +131,7 @@ namespace SDA.Web.Controllers
                         Ticket = ticket
                     };
                 }).ToList();
-                    
+
                 await ticketRepository.Update(ticket);
                 return Ok();
 
@@ -178,7 +178,7 @@ namespace SDA.Web.Controllers
         [HttpGet]
         public async Task<IActionResult> EditTheme()
         {
-            var allThemes = (await themeRepository.GetAll()).OrderBy(x=>x.Group).ToList();
+            var allThemes = (await themeRepository.GetAll()).OrderBy(x => x.Group).ToList();
             return View(allThemes);
         }
 
@@ -196,9 +196,9 @@ namespace SDA.Web.Controllers
             try
             {
 
-                await  themeRepository.Create(dto);
+                await themeRepository.Create(dto);
                 var res = await themeRepository.GetByName(dto.Name);
-                return Json(new {id=res.Id,name=res.Name, group = res.Group});
+                return Json(new { id = res.Id, name = res.Name, group = res.Group });
             }
             catch
             {
@@ -241,9 +241,8 @@ namespace SDA.Web.Controllers
         {
             try
             {
-
-            var themes = await themeRepository.GetAll();
-            return Json(themes);
+                var themes = await themeRepository.GetAll();
+                return Json(themes);
             }
             catch
             {
