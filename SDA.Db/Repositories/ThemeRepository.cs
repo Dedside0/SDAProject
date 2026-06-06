@@ -12,9 +12,10 @@ namespace SDA.Db.Repositories
     internal class ThemeRepository(AppContext dbContext): IThemeRepository
     {
         public async Task<List<Topic>?> GetAll() =>
-           await dbContext.Themes
-           .AsNoTracking()
-           .ToListAsync();
+           await dbContext.Themes.AsNoTracking()
+                .Include(t => t.Questions)
+                    .ThenInclude(q => q.Answers)
+                .ToListAsync();
 
         public async Task<Topic?> GetById(int id) => await dbContext.Themes.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id);
 
@@ -54,5 +55,13 @@ namespace SDA.Db.Repositories
         public async Task<Topic?> GetByName(string name) => await dbContext.Themes
             .AsNoTracking().
             FirstOrDefaultAsync(x => x.Name .ToLower()== name.ToLower());
+
+        public async Task<List<Topic>> GetQuestionsGrouped()
+        {
+            return await dbContext.Themes
+                .Include(t => t.Questions)
+                    .ThenInclude(q => q.Answers)
+                .ToListAsync();
+        }
     }
 }

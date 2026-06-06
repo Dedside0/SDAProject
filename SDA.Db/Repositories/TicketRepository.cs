@@ -18,7 +18,7 @@ namespace SDA.Db.Repositories
                     .ThenInclude(x => x.Question)
                         .ThenInclude(x => x.Answers)
                 .AsSplitQuery()
-                .ToListAsync(); // Использовали асинзоронный метод с await
+                .ToListAsync();
         }
 
 
@@ -138,5 +138,7 @@ namespace SDA.Db.Repositories
 
             await ddd.SaveChangesAsync();
         }
+
+        
     }
 }

@@ -1,0 +1,526 @@
+﻿@using System.Text.Json
+@using System.Text.Json.Serialization
+@model SDAProject.Controllers.GeneratedExamVm
+
+@{
+    ViewData["Title"] = "Экзамен";
+    Layout = "_Layout";
+
+    var questionsJson = JsonSerializer.Serialize(Model.Questions,
+        new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+}
+
+<div class="content-exam">
+    <div class="test-container" id="testPage">
+
+        <!-- HEADER -->
+        <div class="ticket-header">
+            <div class="ticket-title" id="examTitle">Экзамен</div>
+            <div class="test-meta">
+                <div class="quiz-timer" id="timerDisplay">20:00</div>
+            </div>
+        </div>
+
+        <!-- Индикаторы блоков -->
+        <div class="group-indicators" id="groupIndicators">
+            <div class="gi-label">Блоки:</div>
+            <div class="gi-block" id="gi-1">
+                <span class="gi-num">1</span>
+                <span class="gi-score" id="gi-score-1">0/5</span>
+            </div>
+            <div class="gi-block" id="gi-2">
+                <span class="gi-num">2</span>
+                <span class="gi-score" id="gi-score-2">0/5</span>
+            </div>
+            <div class="gi-block" id="gi-3">
+                <span class="gi-num">3</span>
+                <span class="gi-score" id="gi-score-3">0/5</span>
+            </div>
+            <div class="gi-block" id="gi-4">
+                <span class="gi-num">4</span>
+                <span class="gi-score" id="gi-score-4">0/5</span>
+            </div>
+        </div>
+
+        <!-- ПРОГРЕСС -->
+        <div class="question-progress">
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+            <div class="q-counter" id="questionCounter">1 / 20</div>
+        </div>
+
+        @Html.AntiForgeryToken()
+
+        <!-- Скрытая форма для финального POST -->
+        <form id="finishForm" method="post" action="/GeneratedExam/Finish" style="display:none">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="IsPassed"             id="f_IsPassed" />
+            <input type="hidden" name="TimeSpentSeconds"     id="f_TimeSpent" />
+            <input type="hidden" name="QuestionAttemptsJson" id="f_QJson" />
+        </form>
+
+        <!-- КАРТОЧКА ВОПРОСА -->
+        <div class="question-card" id="questionCard">
+            <div class="q-group-badge" id="qGroupBadge"></div>
+            <div id="imageContainer"></div>
+            <div class="q-text" id="questionText"></div>
+            <ul class="answers-list" id="answersList"></ul>
+        </div>
+
+        <!-- НАВИГАЦИЯ -->
+        <div class="test-nav">
+            <button class="btn-secondary" id="prevBtn">◀ Назад</button>
+            <div class="question-dots" id="dotsContainer"></div>
+            <button class="btn-primary" id="nextBtn">Вперёд ▶</button>
+        </div>
+
+        <div style="margin-top:1rem;display:flex;justify-content:flex-end">
+            <button class="btn-primary" id="submitBtn"
+                    style="background:var(--danger);color:white">
+                Завершить экзамен
+            </button>
+        </div>
+
+    </div>
+</div>
+
+@section Styles {
+<style>
+/* ── ГРУППЫ ──────────────────────────────────────────────── */
+.group-indicators {
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+    margin-bottom: .75rem;
+    flex-wrap: wrap;
+}
+
+.gi-label {
+    font-size: .72rem;
+    text-transform: uppercase;
+    letter-spacing: .1em;
+    color: var(--text-muted);
+    margin-right: .25rem;
+}
+
+.gi-block {
+    display: flex;
+    align-items: center;
+    gap: .35rem;
+    padding: .3rem .7rem;
+    border-radius: 7px;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    font-size: .8rem;
+    transition: border-color .2s, background .2s;
+}
+
+.gi-num {
+    font-family: var(--font-head);
+    font-size: 1rem;
+    color: var(--text-muted);
+}
+
+.gi-score {
+    font-size: .75rem;
+    color: var(--text-muted);
+}
+
+/* Состояния блоков */
+.gi-block.gi-ok     { border-color: var(--success); background: rgba(62,207,142,.1); }
+.gi-block.gi-ok .gi-num,
+.gi-block.gi-ok .gi-score { color: var(--success); }
+
+.gi-block.gi-warn   { border-color: #ba7517; background: rgba(186,117,23,.1); }
+.gi-block.gi-warn .gi-num,
+.gi-block.gi-warn .gi-score { color: #e09930; }
+
+.gi-block.gi-fail   { border-color: var(--danger); background: rgba(224,92,58,.15); }
+.gi-block.gi-fail .gi-num,
+.gi-block.gi-fail .gi-score { color: var(--danger); }
+
+.gi-block.gi-extra  { border-color: #5282ff; background: rgba(82,130,255,.1); }
+.gi-block.gi-extra .gi-num,
+.gi-block.gi-extra .gi-score { color: #5282ff; }
+
+/* ── ЗНАЧОК ГРУППЫ НА ВОПРОСЕ ────────────────────────────── */
+.q-group-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: .2rem .65rem;
+    border-radius: 5px;
+    font-size: .72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    margin-bottom: .85rem;
+    border: 1px solid transparent;
+}
+
+.qgb-1 { background: rgba(240,192,64,.15);  border-color: rgba(240,192,64,.4);  color: #f0c040; }
+.qgb-2 { background: rgba(62,207,142,.15);  border-color: rgba(62,207,142,.4);  color: #3ecf8e; }
+.qgb-3 { background: rgba(82,130,255,.15);  border-color: rgba(82,130,255,.4);  color: #5282ff; }
+.qgb-4 { background: rgba(224,92,58,.15);   border-color: rgba(224,92,58,.4);   color: #e05c3a; }
+
+/* ── ТОЧКИ НАВИГАЦИИ ─────────────────────────────────────── */
+.q-dot.extra {
+    border-color: #5282ff;
+    color: #5282ff;
+}
+
+.q-dot.extra.answered {
+    background: #5282ff;
+    border-color: #5282ff;
+    color: #0e0f14;
+}
+
+/* Таймер — дополнительное время подсвечивается синим */
+.quiz-timer.extra-time { color: #5282ff !important; }
+</style>
+}
+
+@section Scripts {
+<script>
+// ── Начальные данные ───────────────────────────────────────────────────────
+const initialQuestions = @Html.Raw(questionsJson);
+
+const $$ = id => document.getElementById(id);
+
+// ── Состояние ─────────────────────────────────────────────────────────────
+let questions     = [...initialQuestions];  // растёт при добавлении доп. вопросов
+let index         = 0;
+let finished      = false;
+let extraLoaded   = false;    // были ли уже подгружены доп. вопросы
+let timerSeconds  = @Model.InitialSeconds;
+let timerInterval;
+const examStart   = Date.now();
+
+const answers         = new Map();   // questionId → { answerId }
+const checkedAnswers  = new Map();   // questionId → { correct, correctId }
+const questionAttempts = new Map();  // questionId → QuestionAttempt-объект
+
+// Статистика по блокам: group → { correct, wrong, total }
+const groupStats = { 1: { c:0, w:0, t:0 }, 2: { c:0, w:0, t:0 },
+                     3: { c:0, w:0, t:0 }, 4: { c:0, w:0, t:0 } };
+
+// Изначально считаем total по группам из 20 вопросов
+questions.forEach(q => groupStats[q.group].t++);
+
+// ── РЕНДЕР ────────────────────────────────────────────────────────────────
+function render() {
+    const q        = questions[index];
+    const selected = answers.get(q.id);
+    const checked  = checkedAnswers.get(q.id);
+
+    // Значок группы
+    const badge = $$('qGroupBadge');
+    badge.className   = `q-group-badge qgb-${q.group}`;
+    badge.textContent = `Блок ${q.group} · ${q.topicName}`;
+
+    // Изображение
+    $$('imageContainer').innerHTML = q.imageUrl
+        ? `<img src="${q.imageUrl}" class="q-image">`
+        : '';
+
+    // Текст
+    $$('questionText').textContent = `${index + 1}. ${q.text}`;
+
+    // Ответы
+    $$('answersList').innerHTML = q.answers.map((a, i) => {
+        let cls = '';
+        if (checked) {
+            if (selected?.answerId == a.id) cls = checked.correct ? 'correct' : 'wrong';
+            if (checked.correctId  == a.id) cls += ' show-correct';
+        }
+        return `<li class="answer-item ${cls}" data-answer-id="${a.id}">
+                    <span class="answer-letter">${String.fromCharCode(1040 + i)}</span>
+                    <span class="answer-text">${a.text}</span>
+                </li>`;
+    }).join('');
+
+    renderDots();
+    updateProgress();
+    updateGroupIndicators();
+    updateNextBtn();
+    attachAnswerEvents();
+}
+
+function renderDots() {
+    $$('dotsContainer').innerHTML = questions.map((q, i) => {
+        const isExtra   = i >= initialQuestions.length;
+        const isAnswered = answers.has(q.id);
+        const cls = [
+            'q-dot',
+            i === index   ? 'current'  : '',
+            isAnswered    ? 'answered' : '',
+            isExtra       ? 'extra'    : ''
+        ].filter(Boolean).join(' ');
+        return `<div class="${cls}" onclick="goTo(${i})">${i + 1}</div>`;
+    }).join('');
+}
+
+function updateProgress() {
+    const answered = answers.size;
+    $$('progressFill').style.width = `${answered / questions.length * 100}%`;
+    $$('questionCounter').textContent = `${index + 1} / ${questions.length}`;
+}
+
+function updateGroupIndicators() {
+    for (let g = 1; g <= 4; g++) {
+        const st  = groupStats[g];
+        const el  = $$('gi-' + g);
+        const sc  = $$('gi-score-' + g);
+
+        // Считаем отвеченные в этой группе
+        const answered = questions
+            .filter(q => q.group === g)
+            .filter(q => answers.has(q.id)).length;
+
+        sc.textContent = `${st.c}/${st.t}`;
+
+        // Цвет
+        el.className = 'gi-block';
+        if (st.t === 0) return;
+
+        // Доп. вопросы добавлены — синий
+        if (st.t > (g <= 4 ? initialQuestions.filter(q => q.group === g).length : 5)) {
+            el.classList.add('gi-extra');
+        } else if (st.w === 0 && answered === st.t) {
+            el.classList.add('gi-ok');
+        } else if (st.w === 1) {
+            el.classList.add('gi-warn');
+        } else if (st.w >= 2) {
+            el.classList.add('gi-fail');
+        }
+    }
+}
+
+function updateNextBtn() {
+    const isLast = index === questions.length - 1;
+    $$('nextBtn').disabled = isLast && answers.size < questions.length;
+}
+
+// ── ОТВЕТЫ ────────────────────────────────────────────────────────────────
+function attachAnswerEvents() {
+    document.querySelectorAll('.answer-item').forEach(li => {
+        li.removeEventListener('click', onAnswerClick);
+        li.addEventListener('click', onAnswerClick);
+    });
+}
+
+let questionStartTime = Date.now();
+
+async function onAnswerClick(e) {
+    const li = e.currentTarget;
+    if (finished) return;
+
+    const q = questions[index];
+    if (answers.has(q.id)) return;
+
+    const answerId    = li.dataset.answerId;
+    const answeredAt  = new Date().toISOString();
+    const timeSpent   = Math.round((Date.now() - questionStartTime) / 1000);
+
+    try {
+        const token = document.querySelector('input[name="__RequestVerificationToken"]').value;
+        const resp  = await fetch('/GeneratedExam/CheckQuestion', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': token },
+            body: JSON.stringify({ QuestionId: q.id, AnswerId: answerId })
+        });
+        if (!resp.ok) { alert('Ошибка проверки'); return; }
+
+        const data = await resp.json(); // { correct, correctId }
+
+        // Сохраняем ответ
+        answers.set(q.id, { answerId });
+        checkedAnswers.set(q.id, { correct: data.correct, correctId: data.correctId });
+        questionAttempts.set(q.id, {
+            questionId:       q.id,
+            selectedAnswerId: answerId,
+            isCorrect:        data.correct,
+            topic:            q.topicName,
+            answeredAt,
+            timeSpentSeconds: timeSpent
+        });
+
+        // Обновляем статистику блока
+        if (data.correct) groupStats[q.group].c++;
+        else              groupStats[q.group].w++;
+
+        render();
+
+        // Проверяем — если это был последний из 20 основных
+        if (!extraLoaded && index === initialQuestions.length - 1
+                         && answers.size === initialQuestions.length) {
+            await handleAfterMain();
+        }
+
+    } catch (err) { console.error(err); }
+}
+
+// ── ЛОГИКА ПОСЛЕ 20 ВОПРОСОВ ──────────────────────────────────────────────
+async function handleAfterMain() {
+    extraLoaded = true;
+
+    // Считаем ошибки по блокам (только основные вопросы)
+    const errByGroup = {};
+    for (let g = 1; g <= 4; g++) errByGroup[g] = groupStats[g].w;
+
+    const totalWrong = Object.values(errByGroup).reduce((s, v) => s + v, 0);
+
+    // Провал: любой блок с 2+ ошибками ИЛИ суммарно 3+ ошибок
+    const failedGroups = [1,2,3,4].filter(g => errByGroup[g] >= 2);
+    if (failedGroups.length > 0 || totalWrong >= 3) {
+        // Сразу завершаем с провалом
+        await finalize(false);
+        return;
+    }
+
+    // Группы с ровно 1 ошибкой → нужны доп. вопросы
+    const groupsWithOne = [1,2,3,4].filter(g => errByGroup[g] === 1);
+
+    if (groupsWithOne.length === 0) {
+        // Всё верно — сдан
+        await finalize(true);
+        return;
+    }
+
+    // Подгружаем доп. вопросы
+    const usedIds = questions.map(q => q.id);
+    const token   = document.querySelector('input[name="__RequestVerificationToken"]').value;
+
+    try {
+        const resp = await fetch('/GeneratedExam/GetExtraQuestions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': token },
+            body: JSON.stringify({ GroupsWithOneError: groupsWithOne, UsedQuestionIds: usedIds })
+        });
+        if (!resp.ok) throw new Error('Ошибка загрузки');
+
+        const extraQuestions = await resp.json();
+
+        // Добавляем к таймеру: +5 минут за каждую группу с 1 ошибкой
+        const addSeconds = groupsWithOne.length * 5 * 60;
+        timerSeconds += addSeconds;
+
+        // Помечаем таймер синим
+        $$('timerDisplay').classList.add('extra-time');
+
+        // Обновляем total по группам
+        extraQuestions.forEach(q => {
+            groupStats[q.group].t++;
+        });
+
+        // Добавляем вопросы
+        questions = [...questions, ...extraQuestions];
+
+        // Переходим к первому доп. вопросу
+        index = initialQuestions.length;
+        render();
+
+    } catch (err) {
+        console.error(err);
+        alert('Не удалось загрузить дополнительные вопросы');
+    }
+}
+
+// ── ФИНАЛ ─────────────────────────────────────────────────────────────────
+async function finalize(isPassed) {
+    finished = true;
+    clearInterval(timerInterval);
+
+    const totalSeconds = Math.round((Date.now() - examStart) / 1000);
+
+    // Если extraLoaded — нужно проверить доп. вопросы
+    let finalPassed = isPassed;
+    if (extraLoaded && isPassed === null) {
+        // Вызывается после всех вопросов (включая доп.)
+        const totalWrong = [1,2,3,4].reduce((s, g) => s + groupStats[g].w, 0);
+        const failGroups = [1,2,3,4].filter(g => groupStats[g].w >= 2);
+        finalPassed = failGroups.length === 0 && totalWrong < 3;
+    }
+
+    $$('f_IsPassed').value  = finalPassed ? 'true' : 'false';
+    $$('f_TimeSpent').value = totalSeconds;
+    $$('f_QJson').value     = JSON.stringify([...questionAttempts.values()]);
+    $$('finishForm').submit();
+}
+
+// После всех вопросов (основных + доп.)
+async function checkAllAnswered() {
+    if (answers.size < questions.length) return;
+    if (finished) return;
+
+    // Доп. вопросы пройдены — финал
+    const totalWrong = [1,2,3,4].reduce((s, g) => s + groupStats[g].w, 0);
+    const failGroups = [1,2,3,4].filter(g => groupStats[g].w >= 2);
+    const passed     = failGroups.length === 0 && totalWrong < 3;
+
+    await finalize(passed);
+}
+
+// ── НАВИГАЦИЯ ─────────────────────────────────────────────────────────────
+function goTo(i) {
+    if (finished) return;
+    index = i;
+    questionStartTime = Date.now();
+    render();
+}
+
+$$('nextBtn').onclick = async () => {
+    if (finished) return;
+    if (index < questions.length - 1) {
+        index++;
+        questionStartTime = Date.now();
+        render();
+    } else {
+        // Последний вопрос
+        await checkAllAnswered();
+    }
+};
+
+$$('prevBtn').onclick = () => {
+    if (finished || index === 0) return;
+    index--;
+    questionStartTime = Date.now();
+    render();
+};
+
+$$('submitBtn').onclick = async () => {
+    if (!finished && confirm('Завершить экзамен досрочно?')) {
+        await finalize(false);
+    }
+};
+
+// ── ТАЙМЕР ────────────────────────────────────────────────────────────────
+function formatTime(s) {
+    const m = String(Math.floor(s / 60)).padStart(2, '0');
+    const sec = String(s % 60).padStart(2, '0');
+    return `${m}:${sec}`;
+}
+
+function startTimer() {
+    $$('timerDisplay').textContent = formatTime(timerSeconds);
+    timerInterval = setInterval(async () => {
+        if (finished) return;
+        if (timerSeconds <= 0) {
+            clearInterval(timerInterval);
+            await finalize(false);
+            return;
+        }
+        timerSeconds--;
+        $$('timerDisplay').textContent = formatTime(timerSeconds);
+        $$('timerDisplay').classList.toggle(
+            'danger',
+            timerSeconds <= 60 && !$$('timerDisplay').classList.contains('extra-time')
+        );
+    }, 1000);
+}
+
+// ── СТАРТ ─────────────────────────────────────────────────────────────────
+render();
+startTimer();
+</script>
+}
