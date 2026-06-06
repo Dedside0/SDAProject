@@ -14,6 +14,7 @@ namespace SDA.Db
         public DbSet<ExamAttempt> ExamAttempts { get; set; }
         public DbSet<QuestionAttempt> QuestionAttempts { get; set; }
         public DbSet<Topic> Themes { get; set; }
+        public DbSet<UserMistakeQueue> MistakeQueue { get; set; }
 
         public AppContext(DbContextOptions<AppContext> options) : base(options)
         {

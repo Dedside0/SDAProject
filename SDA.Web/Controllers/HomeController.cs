@@ -1,17 +1,18 @@
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using SDA.Db.Models;
+using SDA.Db.Repositories;
 using SDA.Web.Models;
 using System.Diagnostics;
 
 namespace SDA.Web.Controllers
 {
-    public class HomeController : Controller
+    public class HomeController(UserManager<User> userManager,
+        IExamAttemptRepository examAttemptRepository,
+        ILogger<HomeController> logger) : Controller
     {
-        private readonly ILogger<HomeController> _logger;
 
-        public HomeController(ILogger<HomeController> logger)
-        {
-            _logger = logger;
-        }
 
         public IActionResult Index()
         {
@@ -33,9 +34,19 @@ namespace SDA.Web.Controllers
             return View();
         }
 
+        [Authorize]
         public IActionResult Stats()
         {
-            return View();
+            try
+            {
+            var userId = Guid.Parse(userManager.GetUserId(User));
+            var attempts = examAttemptRepository.GetAllByUserId(userId);
+            return View(attempts);
+            }
+            catch
+            {
+                return View();
+            }
         }
 
         [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]

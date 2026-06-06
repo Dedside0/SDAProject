@@ -1,5 +1,60 @@
-﻿<!-- ===== STATS PAGE ===== -->
+﻿@model List<SDA.Db.Models.ExamAttempt>
+
+@{
+    if (Model is null) return;
+
+    
+    var sorted = Model.OrderBy(x => x.FinishedAt).ToList();
+
+    var passedCount = Model.Count(x => x.IsPassed);
+    var totalCorrect = Model.Sum(x => x.CorrectCount);
+    var totalQuestions = Model.Sum(x => x.TotalQuestions);
+
+    var overallAccuracy = totalQuestions == 0
+        ? 0
+        : (int)Math.Round(totalCorrect * 100.0 / totalQuestions);
+
+    
+    var allAttempts = Model.SelectMany(x => x.QuestionAttempts).ToList();
+
+    var weakTopics = allAttempts
+        .GroupBy(x => x.Topic)
+        .Where(g => g.Count() >= 1)
+        .Select((g, i) => new
+        {
+            Name = g.Key ?? "Без темы",
+            Accuracy = g.Count(x => x.IsCorrect) * 100.0 / g.Count(),
+            Total = g.Count()
+        })
+        .OrderBy(x => x.Accuracy)
+        .Take(3)
+        .ToList();
+
+    var topicStats = allAttempts
+        .GroupBy(x => x.Topic)
+        .Select(g => new
+        {
+            Name = g.Key ?? "Без темы",
+            Accuracy = (int)Math.Round(g.Count(x => x.IsCorrect) * 100.0 / g.Count()),
+            Correct = g.Count(x => x.IsCorrect),
+            Total = g.Count()
+        })
+        .OrderByDescending(x => x.Accuracy)
+        .ToList();
+
+   
+    var chartAttempts = sorted.Select(x => new
+    {
+        date = x.FinishedAt.ToString("dd.MM"),
+        accuracy = x.TotalQuestions == 0
+                       ? 0
+                       : (int)Math.Round(x.CorrectCount * 100.0 / x.TotalQuestions),
+        isPassed = x.IsPassed
+    }).ToList();
+}
+
 <section class="page" id="page-stats">
+
     <div class="page-header">
         <div class="page-title-block">
             <h1 class="page-title">Статистика</h1>
@@ -7,44 +62,322 @@
         </div>
     </div>
 
+   
     <div class="stats-overview">
         <div class="stat-big-card">
             <span class="sbc-label">Всего сессий</span>
-            <span class="sbc-num" id="stat-sessions">0</span>
+            <span class="sbc-num">@Model.Count</span>
         </div>
         <div class="stat-big-card accent">
             <span class="sbc-label">Точность</span>
-            <span class="sbc-num" id="stat-accuracy">—</span>
+            <span class="sbc-num">@overallAccuracy%</span>
         </div>
         <div class="stat-big-card">
             <span class="sbc-label">Экзаменов сдано</span>
-            <span class="sbc-num" id="stat-passed">0</span>
+            <span class="sbc-num">@passedCount</span>
         </div>
         <div class="stat-big-card">
-            <span class="sbc-label">Слабая тема</span>
-            <span class="sbc-num small-text" id="stat-weak">—</span>
+            <span class="sbc-label">Самая слабая тема</span>
+            <span class="sbc-num small-text">@(weakTopics.FirstOrDefault()?.Name ?? "—")</span>
         </div>
     </div>
 
-    <h2 class="section-heading">История сессий</h2>
-    <div class="sessions-table-wrap">
-        <table class="sessions-table">
-            <thead>
-                <tr>
-                    <th>Дата</th>
-                    <th>Режим</th>
-                    <th>Вопросов</th>
-                    <th>Правильно</th>
-                    <th>Результат</th>
-                </tr>
-            </thead>
-            <tbody id="sessions-tbody"></tbody>
-        </table>
-        <div class="empty-table-msg hidden" id="sessions-empty">Нет данных. Пройдите хотя бы одну сессию.</div>
+    
+    @if (weakTopics.Any())
+    {
+        <h2 class="section-heading">Зоны для улучшения</h2>
+        <div class="weak-topics-grid">
+            @{
+                int weakIdx = 0;
+            }
+            @foreach (var topic in weakTopics)
+            {
+                weakIdx++;
+                var color = topic.Accuracy < 50 ? "#d32f2f"
+                          : topic.Accuracy < 75 ? "#fbc02d"
+                          : "#2e7d32";
+                <div class="weak-topic-card">
+                    <div class="weak-topic-header">
+                        <span class="weak-rank">#@weakIdx</span>
+                        <span class="weak-name">@topic.Name</span>
+                    </div>
+                    <div class="weak-progress">
+                        <div class="weak-progress-fill"
+                             style="width:@topic.Accuracy.ToString("F0")%;background:@color">
+                        </div>
+                    </div>
+                    <div class="weak-topic-footer">
+                        Точность: @Math.Round(topic.Accuracy)% · @topic.Total вопр.
+                    </div>
+                </div>
+            }
+        </div>
+    }
+
+   
+    <div class="stats-grid">
+
+        <!-- Линейный — прогресс по попыткам -->
+        <div class="chart-card">
+            <h3>Прогресс по попыткам</h3>
+            @if (sorted.Any())
+            {
+                <div style="position:relative;height:280px">
+                    <canvas id="progressChart"></canvas>
+                </div>
+            }
+            else
+            {
+                <p class="chart-empty">Пройдите хотя бы одну сессию</p>
+            }
+        </div>
+
+        <!-- Пончик — правильные / ошибки -->
+        <div class="chart-card">
+            <h3>Правильные / ошибки</h3>
+            @if (totalQuestions > 0)
+            {
+                <div style="position:relative;height:280px">
+                    <canvas id="answersChart"></canvas>
+                </div>
+            }
+            else
+            {
+                <p class="chart-empty">Нет данных</p>
+            }
+        </div>
+
     </div>
 
-    <h2 class="section-heading">Точность по темам</h2>
-    <div class="topic-accuracy-list" id="topic-accuracy-list"></div>
+  
+    @if (topicStats.Any())
+    {
+        <h2 class="section-heading">Точность по темам</h2>
+        <div class="topic-accuracy-list">
+            @foreach (var topic in topicStats)
+            {
+                var barColor = topic.Accuracy >= 80 ? "var(--success)"
+                             : topic.Accuracy >= 50 ? "#ba7517"
+                             : "var(--danger)";
+                <div class="topic-accuracy-item">
+                    <div class="topic-header">
+                        <span>@topic.Name</span>
+                        <span>@topic.Correct / @topic.Total (@topic.Accuracy%)</span>
+                    </div>
+                    <div class="topic-progress">
+                        <div class="topic-progress-fill"
+                             style="width:@topic.Accuracy%;background:@barColor">
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
 
-    <button class="btn-danger" id="reset-stats-btn" style="margin-top:2rem">Сбросить всю статистику</button>
+
+    <h2 class="section-heading">История сессий</h2>
+
+    @if (!Model.Any())
+    {
+        <p style="color:var(--text-muted);padding:2rem 0">Сессий пока нет.</p>
+    }
+    else
+    {
+        <div class="sessions-table-wrap">
+            <table class="sessions-table">
+                <thead>
+                    <tr>
+                        <th>Дата</th>
+                        <th>Вопросов</th>
+                        <th>Верно</th>
+                        <th>Ошибок</th>
+                        <th>Точность</th>
+                        <th>Время</th>
+                        <th>Статус</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var exam in Model.OrderByDescending(x => x.FinishedAt))
+                    {
+                        var acc = exam.TotalQuestions > 0
+                            ? (int)Math.Round(exam.CorrectCount * 100.0 / exam.TotalQuestions)
+                            : 0;
+                        <tr>
+                            <td>@exam.FinishedAt.ToString("dd.MM.yyyy HH:mm")</td>
+                            <td>@exam.TotalQuestions</td>
+                            <td style="color:var(--success);font-weight:600">@exam.CorrectCount</td>
+                            <td style="color:var(--danger);font-weight:600">@exam.WrongCount</td>
+                            <td>@acc%</td>
+                            <td>@TimeSpan.FromSeconds(exam.TimeSpentSeconds).ToString(@"mm\:ss")</td>
+                            <td>
+                                @if (exam.IsPassed)
+                                {
+                                    <span class="status-pass">Сдан</span>
+                                }
+                                else
+                                {
+                                    <span class="status-fail">Не сдан</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+
 </section>
+
+@section Styles {
+    <style>
+        .chart-empty {
+            color: var(--text-muted);
+            font-size: .9rem;
+            padding: 2rem 0;
+            text-align: center;
+        }
+    </style>
+}
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+    <script>
+       (function () {
+    const attempts = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(chartAttempts));
+
+    const totalCorrect = @totalCorrect;
+    const totalWrong   = @(totalQuestions - totalCorrect);
+
+   
+    const ACCENT  = '#f0c040';
+    const GREEN   = '#3ecf8e';
+    const RED     = '#e05c3a';
+    const MUTED   = '#7a7d90';
+    const GRID    = 'rgba(255,255,255,.06)';
+
+    Chart.defaults.color          = MUTED;
+    Chart.defaults.font.family    = "'Golos Text', sans-serif";
+    Chart.defaults.font.size      = 12;
+
+    const tooltipDefaults = {
+        backgroundColor : '#13141a',
+        borderColor     : '#2a2d3a',
+        borderWidth     : 1,
+        titleColor      : '#e8e9ef',
+        bodyColor       : MUTED,
+        padding         : 10,
+    };
+
+    //Линейный: прогресс по попыткам 
+    const progressEl = document.getElementById('progressChart');
+    if (progressEl && attempts.length > 0) {
+
+        
+        const pointColors = attempts.map(a => a.isPassed ? GREEN : RED);
+
+        new Chart(progressEl, {
+            type: 'line',
+            data: {
+                
+                labels: attempts.map((a, i) => `${i + 1} (${a.date})`),
+                datasets: [{
+                    label: 'Точность %',
+                    data: attempts.map(a => a.accuracy),
+                    borderColor: ACCENT,
+                    backgroundColor: (ctx) => {
+                        const g = ctx.chart.ctx.createLinearGradient(0, 0, 0, 280);
+                        g.addColorStop(0, 'rgba(240,192,64,.22)');
+                        g.addColorStop(1, 'rgba(240,192,64,0)');
+                        return g;
+                    },
+                    borderWidth: 2.5,
+                    pointBackgroundColor: pointColors,
+                    pointBorderColor    : pointColors,
+                    pointRadius: 5,
+                    pointHoverRadius: 7,
+                    tension: 0.35,
+                    fill: true,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: { mode: 'index', intersect: false },
+                scales: {
+                    x: {
+                        grid : { color: GRID },
+                        ticks: { color: MUTED, maxTicksLimit: 12 }
+                    },
+                    y: {
+                        min  : 0,
+                        max  : 100,
+                        grid : { color: GRID },
+                        ticks: {
+                            color   : MUTED,
+                            callback: v => v + '%'
+                        }
+                    }
+                },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        ...tooltipDefaults,
+                        callbacks: {
+                            label: ctx => {
+                                const a = attempts[ctx.dataIndex];
+                                return [
+                                    `Точность: ${a.accuracy}%`,
+                                    a.isPassed ? '✓ Сдано' : '✕ Не сдано'
+                                ];
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+
+    const answersEl = document.getElementById('answersChart');
+    if (answersEl && (totalCorrect + totalWrong) > 0) {
+        new Chart(answersEl, {
+            type: 'doughnut',
+            data: {
+                labels: ['Верно', 'Ошибки'],
+                datasets: [{
+                    data: [totalCorrect, totalWrong],
+                    backgroundColor: [GREEN, RED],
+                    borderColor    : [GREEN, RED],
+                    borderWidth: 2,
+                    hoverOffset: 6
+                }]
+            },
+            options: {
+                responsive         : true,
+                maintainAspectRatio: false,
+                cutout             : '68%',
+                plugins: {
+                    legend: {
+                        display : true,
+                        position: 'bottom',
+                        labels  : { color: MUTED, padding: 16, boxWidth: 12 }
+                    },
+                    tooltip: {
+                        ...tooltipDefaults,
+                        callbacks: {
+                            label: ctx => {
+                                const total = totalCorrect + totalWrong;
+                                const pct   = Math.round(ctx.raw * 100 / total);
+                                return `${ctx.label}: ${ctx.raw} (${pct}%)`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+})();
+</script>
+}
+
+ 

@@ -14,6 +14,7 @@ namespace SDA.Db
             services.AddScoped<IThemeRepository, ThemeRepository>();
             services.AddScoped<IQuestionAttemptRepository, QuestionAttemptRepository>();
             services.AddScoped<IExamAttemptRepository, ExamAttemptRepository>();
+            services.AddScoped<IUserMistakeQueueRepository, UserMistakeQueueRepository>();
             return services;
         }
 

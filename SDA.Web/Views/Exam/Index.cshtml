@@ -171,7 +171,6 @@ async function handleAnswerClick(e) {
         // ── Сохраняем ответ для отправки контроллеру ────────────────────
         answers[index] = { questionId, answerId };
 
-        console.log(questions[index]);
         // ── Собираем QuestionAttempt для этого вопроса ───────────────────
         const qstn = questions[index];
         questionAttempts[index] = {

@@ -1,4 +1,5 @@
-﻿using SDA.Db.Models;
+﻿using Microsoft.EntityFrameworkCore;
+using SDA.Db.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -14,10 +15,16 @@ namespace SDA.Db.Repositories
             dbContext.ExamAttempts.Add(attempt);
             dbContext.SaveChanges();
         }
-        public ExamAttempt GetById(Guid id)
+        public ExamAttempt? GetById(Guid id)
         {
-            return dbContext.ExamAttempts
+            return dbContext.ExamAttempts.Include(x=>x.User).Include(x=>x.QuestionAttempts)
                 .FirstOrDefault(a => a.Id == id);
         }
+        public List<ExamAttempt>? GetAllByUserId(Guid userId)
+        {
+            return dbContext.ExamAttempts.Include(x => x.User).Include(x => x.QuestionAttempts)
+                .Where(a => a.UserId == userId).ToList();
+        }
+
     }
 }
