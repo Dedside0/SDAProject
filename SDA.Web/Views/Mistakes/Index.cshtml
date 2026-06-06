@@ -235,14 +235,11 @@ async function handleAnswerClick(e) {
 
         render();
 
-        // Автоматический переход к следующему вопросу через 1.5 секунды
-        if (!finished && index < questions.length - 1) {
-            setTimeout(() => {
-                if (!finished && !allAnswered()) {
-                    next();
-                }
-            }, 1500);
-        }
+if (data.correct && !finished && index < questions.length - 1) {
+    setTimeout(() => {
+        if (!finished) next();
+    }, 100);
+}   
 
     } catch (err) {
         console.error(err);

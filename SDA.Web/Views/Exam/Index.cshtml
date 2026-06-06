@@ -189,7 +189,14 @@ async function handleAnswerClick(e) {
             correctId: data.correctId
         };
 
-        render();
+      render();
+
+        // Автопереход только при правильном ответе
+        if (data.correct && !finished && index < questions.length - 1) {
+            setTimeout(() => {
+                if (!finished) next();
+            }, 100);
+        }
 
     } catch (err) {
         console.error(err);
