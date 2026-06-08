@@ -9,15 +9,15 @@ using System.Threading.Tasks;
 
 namespace SDA.Db.Repositories
 {
-    internal class ThemeRepository(AppContext dbContext): IThemeRepository
+    internal class TopicRepository(AppContext dbContext): ITopicRepository
     {
         public async Task<List<Topic>?> GetAll() =>
-           await dbContext.Themes.AsNoTracking()
+           await dbContext.Topics.AsNoTracking()
                 .Include(t => t.Questions)
-                    .ThenInclude(q => q.Answers)
+                    .ThenInclude(q => q.Answers).AsSplitQuery()
                 .ToListAsync();
 
-        public async Task<Topic?> GetById(int id) => await dbContext.Themes.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id);
+        public async Task<Topic?> GetById(int id) => await dbContext.Topics.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id);
 
 
         public async Task Create(Topic theme)
@@ -26,13 +26,13 @@ namespace SDA.Db.Repositories
             if(existing is not null)
                 throw new DuplicateWaitObjectException($"Тема с таким Id уже существует");
 
-            await dbContext.Themes.AddAsync(theme);
+            await dbContext.Topics.AddAsync(theme);
             await dbContext.SaveChangesAsync();
         }
 
         public async Task Update(Topic theme)
         {
-            var existing = await dbContext.Themes.FirstOrDefaultAsync(x => x.Id == theme.Id);
+            var existing = await dbContext.Topics.FirstOrDefaultAsync(x => x.Id == theme.Id);
             if (existing is null)
                 throw new KeyNotFoundException($"Тема с Id не найдена.");
 
@@ -44,21 +44,21 @@ namespace SDA.Db.Repositories
 
         public async Task Delete(int id)
         {
-            var existing = await dbContext.Themes.FirstOrDefaultAsync(x => x.Id == id);
+            var existing = await dbContext.Topics.FirstOrDefaultAsync(x => x.Id == id);
             if(existing is null)
                 throw new KeyNotFoundException($"Тема с Id не найдена.");
 
-            dbContext.Themes.Remove(existing);
+            dbContext.Topics.Remove(existing);
             await dbContext.SaveChangesAsync() ;
         }
 
-        public async Task<Topic?> GetByName(string name) => await dbContext.Themes
+        public async Task<Topic?> GetByName(string name) => await dbContext.Topics
             .AsNoTracking().
             FirstOrDefaultAsync(x => x.Name .ToLower()== name.ToLower());
 
         public async Task<List<Topic>> GetQuestionsGrouped()
         {
-            return await dbContext.Themes
+            return await dbContext.Topics
                 .Include(t => t.Questions)
                     .ThenInclude(q => q.Answers)
                 .ToListAsync();

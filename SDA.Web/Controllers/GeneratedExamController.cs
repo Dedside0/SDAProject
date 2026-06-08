@@ -14,7 +14,7 @@ using SDA.Db.Repositories;
 namespace SDAProject.Controllers
 {
     [Authorize]
-    public class GeneratedExamController(IThemeRepository themeRepository,
+    public class GeneratedExamController(ITopicRepository themeRepository,
         ITicketRepository ticketRepository,
         IQuestionRepository questionRepository,
         IExamAttemptRepository examAttemptRepository,

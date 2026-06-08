@@ -2,7 +2,7 @@
 
 namespace SDA.Db.Repositories
 {
-    public interface IThemeRepository
+    public interface ITopicRepository
     {
         Task Create(Topic question);
         Task<List<Topic>?> GetAll();

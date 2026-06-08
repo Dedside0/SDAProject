@@ -140,8 +140,12 @@
     // ── Загрузка тем ──────────────────────────────────────────────────────────
     async function fetchThemeNames() {
         try {
+            console.log("Fetch")
             const resp = await fetch('/Admin/GetAllThemes');
+            console.log(resp)
+            console.log(resp.json)
             if (!resp.ok) return;
+            
             TICKET_THEMES = await resp.json(); 
         } catch (err) {
             console.error('Не удалось загрузить темы:', err);
@@ -184,6 +188,7 @@
 
     // Рендер списка тем с фильтром
     function renderThemeList(filter, selectedId) {
+        console.log(TICKET_THEMES)
         const list    = document.getElementById('tp-list');
         const empty   = document.getElementById('tp-empty');
         const filtered = filter

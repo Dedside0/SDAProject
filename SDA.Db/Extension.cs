@@ -8,10 +8,9 @@ namespace SDA.Db
     {
         public static IServiceCollection AddRepositories(this IServiceCollection services)
         {
-            services.AddScoped<IUserRepository, UserRepository>();
             services.AddScoped<ITicketRepository, TicketRepository>();
             services.AddScoped<IQuestionRepository, QuestionRepository>();
-            services.AddScoped<IThemeRepository, ThemeRepository>();
+            services.AddScoped<ITopicRepository, TopicRepository>();
             services.AddScoped<IQuestionAttemptRepository, QuestionAttemptRepository>();
             services.AddScoped<IExamAttemptRepository, ExamAttemptRepository>();
             services.AddScoped<IUserMistakeQueueRepository, UserMistakeQueueRepository>();

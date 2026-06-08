@@ -11,10 +11,10 @@ namespace SDA.Web.Controllers
     [Authorize(Roles = Constants.AdminRoleName)]
     public class AdminController(
         ITicketRepository ticketRepository,
-        //IQuestionRepository questionRepository,
-        IThemeRepository themeRepository,
+        ITopicRepository themeRepository,
         IWebHostEnvironment _env) : Controller
     {
+        [HttpGet]
         public async Task<IActionResult> EditTicket()
         {
             var temp = await ticketRepository.GetAll();
@@ -43,40 +43,15 @@ namespace SDA.Web.Controllers
             return View(temp);
         }
 
+
         [ValidateAntiForgeryToken]
         [HttpPost]
         public IActionResult CreateTicket([FromBody] SaveTicketDto dto)
         {
             try
             {
-                var ticket = new Ticket
-                {
-                    Name = dto.Name,
-                    Theme = dto.Theme,
-                    Description = dto.Description,
-                    TicketQuestions = dto.TicketQuestions.Select(tqDto =>
-                    {
-                        var question = new Question
-                        {
-                            Text = tqDto.Text,
-                            ImageUrl = tqDto.ImageUrl,
-                            Explanation = tqDto.Exploration!,
-                            TopicId = tqDto.ThemeId,
-                            Answers = tqDto.Answers.Select(aDto => new Answer
-                            {
-                                Text = aDto.Text,
-                                IsRight = aDto.IsRight,
-                                Order = aDto.Order
-                            }).ToList()
-                        };
+                var ticket = dto.ToTicket();
 
-                        return new TicketQuestion
-                        {
-                            Order = tqDto.Order,
-                            Question = question
-                        };
-                    }).ToList()
-                };
                 ticketRepository.Create(ticket);
                 return Ok();
             }
@@ -92,49 +67,10 @@ namespace SDA.Web.Controllers
         {
             try
             {
-
-                var ticket = new Ticket
-                {
-                    Id = dto.Id,
-                    Name = dto.Name,
-                    Theme = dto.Theme,
-                    Description = dto.Description
-                };
-
-                ticket.TicketQuestions = dto.TicketQuestions.Select(tqDto =>
-                {
-                    Guid realQuestionId = tqDto.QuestionId.ToString().StartsWith("00000000")
-                        ? Guid.Empty
-                        : tqDto.QuestionId;
-
-                    var question = new Question
-                    {
-                        Id = realQuestionId,
-                        Text = tqDto.Text,
-                        ImageUrl = tqDto.ImageUrl,
-                        Explanation = tqDto.Exploration!,
-                        TopicId = tqDto.ThemeId,
-                        Answers = tqDto.Answers.Select(aDto => new Answer
-                        {
-                            Id = aDto.Id.ToString().StartsWith("00000000") ? Guid.Empty : aDto.Id,
-                            Text = aDto.Text,
-                            IsRight = aDto.IsRight,
-                            Order = aDto.Order,
-                        }).ToList()
-                    };
-
-                    return new TicketQuestion
-                    {
-                        Order = tqDto.Order,
-                        QuestionId = realQuestionId,
-                        Question = question,
-                        Ticket = ticket
-                    };
-                }).ToList();
+                var ticket = dto.ToTicket();
 
                 await ticketRepository.Update(ticket);
                 return Ok();
-
             }
             catch
             {
@@ -195,7 +131,6 @@ namespace SDA.Web.Controllers
         {
             try
             {
-
                 await themeRepository.Create(dto);
                 var res = await themeRepository.GetByName(dto.Name);
                 return Json(new { id = res.Id, name = res.Name, group = res.Group });
@@ -236,13 +171,15 @@ namespace SDA.Web.Controllers
                 return BadRequest();
             }
         }
+
         [HttpGet]
         public async Task<IActionResult> GetAllThemes()
         {
             try
             {
                 var themes = await themeRepository.GetAll();
-                return Json(themes);
+                var dto = themes?.Select(Mapper.ToTopicDto).ToList();
+                return Json(dto);
             }
             catch
             {
