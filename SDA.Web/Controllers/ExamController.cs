@@ -61,13 +61,14 @@ namespace SDAProject.Controllers
                         Id = tQuest.QuestionId,
                         Text = tQuest.Question.Text,
                         ImageUrl = tQuest.Question.ImageUrl,
-                        Exploration = tQuest.Question.Exploration,
+                        Explanation = tQuest.Question.Explanation,
                         Topic = tQuest.Question.Topic?.Name,
                         Answers = tQuest.Question.Answers.Select(ans => new AnswerVm()
                         {
                             Id = ans.Id,
                             Text = ans.Text,
-                            Order = ans.Order
+                            Order = ans.Order,
+                            IsRight = ans.IsRight,
                         }).ToList()
                     }
                 }).ToList()
@@ -77,24 +78,6 @@ namespace SDAProject.Controllers
         }
 
 
-        [ValidateAntiForgeryToken]
-        [HttpPost]
-        public IActionResult CheckQuestion([FromBody] CheckAnswerDTO dto)
-        {
-            if (dto is null)
-                return BadRequest();
-
-            var question = questionRepository.GetById(dto.QuestionId);
-            if (question is null)
-                return BadRequest();
-
-            var rightAnswer = question.Answers.FirstOrDefault(x => x.IsRight);
-            if (rightAnswer is null)
-                return BadRequest();
-
-            return Ok(new { correct = rightAnswer.Id == dto.AnswerId, correctId=rightAnswer.Id });
-
-        }
 
 
         [HttpPost]

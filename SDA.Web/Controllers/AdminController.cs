@@ -60,7 +60,7 @@ namespace SDA.Web.Controllers
                         {
                             Text = tqDto.Text,
                             ImageUrl = tqDto.ImageUrl,
-                            Exploration = tqDto.Exploration!,
+                            Explanation = tqDto.Exploration!,
                             TopicId = tqDto.ThemeId,
                             Answers = tqDto.Answers.Select(aDto => new Answer
                             {
@@ -112,7 +112,7 @@ namespace SDA.Web.Controllers
                         Id = realQuestionId,
                         Text = tqDto.Text,
                         ImageUrl = tqDto.ImageUrl,
-                        Exploration = tqDto.Exploration!,
+                        Explanation = tqDto.Exploration!,
                         TopicId = tqDto.ThemeId,
                         Answers = tqDto.Answers.Select(aDto => new Answer
                         {

@@ -91,7 +91,7 @@ namespace SDA.Db.Repositories
 
                     var quest = existingTq.Question;
                     quest.Text = incomingTq.Question.Text;
-                    quest.Exploration = incomingTq.Question.Exploration;
+                    quest.Explanation = incomingTq.Question.Explanation;
                     quest.ImageUrl = incomingTq.Question.ImageUrl;
                     quest.TopicId = incomingTq.Question.TopicId;
 

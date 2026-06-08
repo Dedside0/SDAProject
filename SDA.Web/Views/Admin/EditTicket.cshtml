@@ -114,7 +114,7 @@
                            id        = tq.QuestionId,
                            text      = tq.Question.Text,
                            imageUrl  = tq.Question.ImageUrl,
-                           hint      = tq.Question.Exploration ?? "",
+                           hint      = tq.Question.Explanation ?? "",
                            themeId   = tq.Question.TopicId != null ? (int?)tq.Question.TopicId : null,
                            themeName = tq.Question.TopicId != null ? tq.Question.Topic?.Name : "",
                            order     = tq.Order,
@@ -328,12 +328,6 @@
             </div>
 
             <div class="meta-row">
-                <div class="meta-field">
-                    <label>Тема билета</label>
-                    <select class="meta-select" onchange="patchTicket('theme', this.value)">
-                        ${themeOptions}
-                    </select>
-                </div>
                 <div class="meta-field">
                     <label>ID билета</label>
                     <input class="meta-input" type="text" value="${esc(t.id)}"

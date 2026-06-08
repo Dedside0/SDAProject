@@ -30,12 +30,10 @@ namespace SDAProject.Controllers
 
             var rng = new Random();
 
-            // По 5 вопросов из каждой группы 1-4
             var selected = new List<GeneratedQuestion>();
 
             for (int group = 1; group <= 4; group++)
             {
-                // Все вопросы группы из всех тем
                 var groupQuestions = topics
                     .Where(t => t.Group == group)
                     .SelectMany(t => t.Questions.Select(q => new { q, t }))
@@ -43,7 +41,6 @@ namespace SDAProject.Controllers
 
                 if (groupQuestions.Count < 5)
                 {
-                    // Если вопросов меньше 5 — берём сколько есть
                     foreach (var item in groupQuestions)
                         selected.Add(Map(item.q, item.t, group));
                 }
@@ -65,20 +62,7 @@ namespace SDAProject.Controllers
             return View(vm);
         }
 
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> CheckQuestion(
-            [FromBody] CheckDto dto)
-        {
-            var answer =  questionRepository.GetById(dto.QuestionId).Answers.FirstOrDefault(x=>x.Id==dto.AnswerId);
-            if (answer == null) return BadRequest("Ответ не найден");
-
-            var question =  questionRepository.GetById(dto.QuestionId);
-            var correct = question.Answers.FirstOrDefault(x => x.IsRight);
-
-            return Ok(new { correct = answer.IsRight, correctId = correct?.Id });
-        }
-
+      
         public class CheckDto
         {
             public Guid QuestionId { get; set; }
@@ -91,8 +75,6 @@ namespace SDAProject.Controllers
         public async Task<IActionResult> GetExtraQuestions(
             [FromBody] ExtraRequestDto dto)
         {
-            // dto.GroupsWithOneError  = [1, 3]   (группы, где ровно 1 ошибка)
-            // dto.UsedQuestionIds     = [...] (уже показанные — не повторять)
 
             var rng = new Random();
             var usedIds = dto.UsedQuestionIds?.ToHashSet() ?? new();
@@ -195,7 +177,7 @@ namespace SDAProject.Controllers
                 Id        = q.Id,
                 Text      = q.Text,
                 ImageUrl  = q.ImageUrl,
-                Hint      = q.Exploration ?? "",
+                Hint      = q.Explanation ?? "",
                 TopicName = t.Name,
                 Group     = group,
                 Answers   = q.Answers.Select(a => new GeneratedAnswer

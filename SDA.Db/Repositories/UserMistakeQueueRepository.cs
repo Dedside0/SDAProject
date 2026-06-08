@@ -34,7 +34,8 @@ namespace SDA.Db.Repositories
         public List<UserMistakeQueue>? GetAllByUserId(Guid id)
         {
             var existing = dbContext.MistakeQueue.AsNoTracking().Where(x => x.UserId == id && x.IsMastered == false).ToList();
-            return existing;
+
+            return existing.DistinctBy(x=>x.QuestionId).ToList();
         }
 
         public  UserMistakeQueue? GetUserMistake(Guid userId, Guid questionId)

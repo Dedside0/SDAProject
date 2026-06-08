@@ -46,16 +46,14 @@
 
         <!-- Кольцо точности -->
         <div class="rp-ring-wrap">
-            <svg width="130" height="130" viewBox="0 0 130 130"
-                 role="img" aria-label="Точность @Model.Accuracy процентов">
-                <circle cx="65" cy="65" r="54" fill="none"
-                        stroke="var(--border)" stroke-width="10" />
-                <circle cx="65" cy="65" r="54" fill="none"
+            <svg width="130" height="130" viewBox="0 0 130 130">
+                <circle cx="65" cy="65" r="54" fill="none" stroke="#2a2d3a" stroke-width="10" />
+                <circle id="accuracyRing"
+                        cx="65" cy="65" r="54" fill="none"
                         stroke="@accentColor" stroke-width="10"
                         stroke-linecap="round"
-                        stroke-dasharray="@ringFill.ToString("F1") @ringGap.ToString("F1")"
-                        stroke-dashoffset="84.8"
-                        style="transition:stroke-dasharray .8s ease" />
+                        stroke-dasharray="0 339.292"
+                        transform="rotate(-90 65 65)" />
             </svg>
             <div class="rp-ring-label">
                 <span class="rp-ring-pct">@Model.Accuracy<small>%</small></span>
@@ -144,11 +142,7 @@
 
     <!-- ── КНОПКИ ────────────────────────────────────────────────── -->
     <div class="rp-actions">
-        <a asp-controller="Exam" asp-action="Index"
-               asp-route-id="@Model."
-               class="btn-secondary">
-            🔄 Попробовать снова
-        </a>
+       
         <a asp-controller="Home" asp-action="Index" class="btn-primary">
             На главную
         </a>
@@ -160,6 +154,19 @@
 
 @section Scripts {
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+    <script>
+        (function() {
+        const ring = document.getElementById('accuracyRing');
+        if (!ring) return;
+        
+        const percent = @Model.Accuracy;
+        const circumference = 339.292;
+        const dashLength = (percent / 100) * circumference;
+        
+        ring.style.strokeDasharray = dashLength + ' ' + (circumference - dashLength);
+        })();
+    </script>
+
         <script>
         // Данные из ViewModel — уже сериализованы в C#
         const questionTimes = @Html.Raw(timesJson);
