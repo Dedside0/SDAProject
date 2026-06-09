@@ -152,6 +152,20 @@ namespace SDA.Db.Repositories
             }
         }
 
-
+        public async Task Delete(Guid id)
+        {
+            var ticket = await db.Tickets
+                .Include(x => x.TicketQuestions)
+                    .ThenInclude(x => x.Question)
+                        .ThenInclude(x => x.Topic)
+                .Include(x => x.TicketQuestions)
+                    .ThenInclude(x => x.Question)
+                        .ThenInclude(x => x.Answers)
+                        .FirstOrDefaultAsync(x => x.Id == id);
+            if (ticket is null)
+                throw new KeyNotFoundException("Билет не найден");
+            db.Tickets.Remove(ticket);
+            await db.SaveChangesAsync();
+        }
     }
 }

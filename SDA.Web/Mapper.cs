@@ -104,5 +104,29 @@ namespace SDA.Web
             };
         }
 
+        public static QuestionVm ToQuestionVm(this Question question)
+        {
+            return new QuestionVm
+            {
+                Answers = question.Answers.Select(x=>x.ToAnswerVm()).ToList(),
+                Explanation = question.Explanation,
+                Id = question.Id,
+                ImageUrl = question.ImageUrl,
+                Text = question.Text,
+                Topic = question.Topic?.Name,
+            };
+        }
+
+        public static AnswerVm ToAnswerVm(this Answer answer)
+        {
+            return new AnswerVm
+            {
+                Text = answer.Text,
+                Id = answer.Id,
+                IsRight = answer.IsRight,
+                Order = answer.Order,
+            };
+        }
+
     }
 }

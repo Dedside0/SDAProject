@@ -1,24 +1,26 @@
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using SDA.Db;
+using SDA.Db.Models;
+using SDA.Db.Repositories;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Security.Claims;
 using System.Text.Json;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using SDA.Db;
-using SDA.Db.Models;
-using SDA.Db.Repositories;
 
 namespace SDAProject.Controllers
 {
     [Authorize]
-    public class GeneratedExamController(ITopicRepository themeRepository,
+    public partial class GeneratedExamController(ITopicRepository themeRepository,
         ITicketRepository ticketRepository,
         IQuestionRepository questionRepository,
         IExamAttemptRepository examAttemptRepository,
-        IQuestionAttemptRepository questionAttemptRepository) : Controller
+        IQuestionAttemptRepository questionAttemptRepository,
+        UserManager<User> userManager) : Controller
     {
 
         // Генерирует 20 вопросов (5 из каждой группы) и отдаёт View
@@ -108,8 +110,7 @@ namespace SDAProject.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Finish(FinishDto dto)
         {
-            var userId = Guid.Parse(
-                User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            var userId = Guid.Parse(userManager.GetUserId(User));
 
             var qaList = string.IsNullOrWhiteSpace(dto.QuestionAttemptsJson)
                 ? new List<QaDto>()
@@ -145,6 +146,7 @@ namespace SDAProject.Controllers
                     SelectedAnswerId = qa.SelectedAnswerId,
                     IsCorrect        = qa.IsCorrect,
                     Topic            = qa.Topic,
+                    UserId = userId,
                     AnsweredAt       = qa.AnsweredAt.Kind == DateTimeKind.Utc
                                            ? qa.AnsweredAt
                                            : qa.AnsweredAt.ToUniversalTime()
@@ -154,23 +156,6 @@ namespace SDAProject.Controllers
             return RedirectToAction("Result", "Exam", new { attemptId = attempt.Id });
         }
 
-        public class FinishDto
-        {
-            public bool   IsPassed             { get; set; }
-            public int    TimeSpentSeconds      { get; set; }
-            public string QuestionAttemptsJson  { get; set; } = "";
-        }
-
-        public class QaDto
-        {
-            public Guid      QuestionId       { get; set; }
-            public Guid?     SelectedAnswerId { get; set; }
-            public bool      IsCorrect        { get; set; }
-            public string    Topic            { get; set; } = "";
-            public DateTime  AnsweredAt       { get; set; }
-        }
-
-        // ── Маппер ──────────────────────────────────────────────────────────
         private static GeneratedQuestion Map(Question q, Topic t, int group) =>
             new()
             {

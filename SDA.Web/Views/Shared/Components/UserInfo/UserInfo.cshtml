@@ -1,0 +1,19 @@
+﻿@using SDA.Web.Models.DTO
+@model UserInfoDto
+
+<div class="home-stats-row">
+    <div class="hstat-card">
+        <span class="hstat-num" id="hs-total">@Model.Questions</span>
+        <span class="hstat-label">Вопросов пройдено</span>
+    </div>
+
+    <div class="hstat-card accent">
+        <span class="hstat-num" id="hs-correct">@Model.RightPercent%</span>
+        <span class="hstat-label">Правильных ответов</span>
+    </div>
+
+    <div class="hstat-card">
+        <span class="hstat-num" id="hs-streak">@Model.Days</span>
+        <span class="hstat-label">Дней подряд</span>
+    </div>
+</div>

@@ -8,5 +8,6 @@ namespace SDA.Db.Repositories
         Task<List<Ticket>?> GetAll();
         Task<Ticket?> GetById(Guid id, bool track = false);
         Task Update(Ticket ticket);
+        Task Delete(Guid id);
     }
 }

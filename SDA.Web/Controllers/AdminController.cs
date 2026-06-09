@@ -17,6 +17,7 @@ namespace SDA.Web.Controllers
         [HttpGet]
         public async Task<IActionResult> EditTicket()
         {
+            ViewData["TicketRed"] = true;
             var temp = await ticketRepository.GetAll();
             var allTickets = temp?.Select(ticket => new TicketVm()
             {
@@ -131,8 +132,11 @@ namespace SDA.Web.Controllers
         {
             try
             {
-                await themeRepository.Create(dto);
-                var res = await themeRepository.GetByName(dto.Name);
+                var res = await themeRepository.Create(dto);
+                if (res == null)
+                {
+                    return NotFound(new { message = "Тема не найдена после создания." });
+                }
                 return Json(new { id = res.Id, name = res.Name, group = res.Group });
             }
             catch
@@ -164,6 +168,20 @@ namespace SDA.Web.Controllers
             try
             {
                 await themeRepository.Delete(id);
+                return Ok();
+            }
+            catch
+            {
+                return BadRequest();
+            }
+        }
+
+        [HttpDelete]
+        public async Task<IActionResult> DeleteTicket(Guid id)
+        {
+            try
+            {
+                await ticketRepository.Delete(id);
                 return Ok();
             }
             catch

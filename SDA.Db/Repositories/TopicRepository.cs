@@ -1,11 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using SDA.Db.Models;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net.Sockets;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace SDA.Db.Repositories
 {
@@ -20,14 +14,16 @@ namespace SDA.Db.Repositories
         public async Task<Topic?> GetById(int id) => await dbContext.Topics.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id);
 
 
-        public async Task Create(Topic theme)
+        public async Task<Topic?> Create(Topic topic)
         {
-            var existing = await GetById(theme.Id);
+            var existing = await GetById(topic.Id);
             if(existing is not null)
                 throw new DuplicateWaitObjectException($"Тема с таким Id уже существует");
 
-            await dbContext.Topics.AddAsync(theme);
-            await dbContext.SaveChangesAsync();
+            await dbContext.Topics.AddAsync(topic);
+            await dbContext.SaveChangesAsync(); 
+
+            return topic; 
         }
 
         public async Task Update(Topic theme)
@@ -54,7 +50,7 @@ namespace SDA.Db.Repositories
 
         public async Task<Topic?> GetByName(string name) => await dbContext.Topics
             .AsNoTracking().
-            FirstOrDefaultAsync(x => x.Name .ToLower()== name.ToLower());
+            FirstOrDefaultAsync(x => x.Name.ToLower() == name.ToLower());
 
         public async Task<List<Topic>> GetQuestionsGrouped()
         {

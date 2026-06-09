@@ -120,7 +120,7 @@
         <span class="mobile-logo">🚦 ПДД</span>
     </header>
 
-    <main class="content" id="content">
+    <main class="content" id="content" style=@(ViewData["TicketRed"] as bool?==true ? "padding-top:0;" : "")>
 
         @RenderBody()
 

@@ -651,7 +651,7 @@
             `Билет «${t.name}» и все его вопросы будут удалены. Это действие нельзя отменить.`;
         confirmCallback = async () => {
             try {
-                const resp = await fetch(`/Admin/Delete/${id}`, { method: 'DELETE' });
+                const resp = await fetch(`/Admin/DeleteTicket/${id}`, { method: 'DELETE' });
                 if (!resp.ok) throw new Error('Ошибка сервера');
                 tickets = tickets.filter(x => x.id !== id);
                 activeTicketId = null;
