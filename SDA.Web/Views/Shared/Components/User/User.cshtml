@@ -1,0 +1,21 @@
+﻿@using SDA.Db.Models
+@model User
+
+@if(Model is not null)
+{
+    <div class="auth-block user-state">
+        <div class="user-card">
+            <div class="user-avatar">@((Model.FullName??"Undefined").Substring(0, 2).ToUpper())</div>
+            <div class="user-info">
+                <span class="user-name">@Model.FullName</span>
+            </div>
+        </div>
+        <a asp-controller="Account" asp-action="Logout" class="sidebar-logout">Выйти</a>
+    </div>
+}
+else
+{
+    <div class="auth-block guest-state">
+        <a asp-controller="Account" asp-action="Authorization" class="btn-sidebar-login">Войти</a>
+    </div>
+}

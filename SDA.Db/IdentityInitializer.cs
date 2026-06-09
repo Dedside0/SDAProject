@@ -23,7 +23,7 @@ namespace SDA.Db
                 {
                     Email = Constants.DefaultAdminEmail,
                     UserName = Constants.DefaultAdminEmail,
-                    //PhoneNumber = Constants.DefaultAdminPhone,
+                    FullName = "ADMIN",
                     RegistrationDateTime = DateTime.UtcNow
                 };
 

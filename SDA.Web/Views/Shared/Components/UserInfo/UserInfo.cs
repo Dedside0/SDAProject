@@ -12,6 +12,9 @@ namespace SDA.Web.Views.Shared.Components.UserInfo
     {
         public async Task<IViewComponentResult> InvokeAsync()
         {
+            var info = new UserInfoDto { Questions = 0, RightPercent = 0 };
+            if (User.Identity.IsAuthenticated)
+            {
             var userIdString = userManager.GetUserId(UserClaimsPrincipal);
 
             var userId = Guid.Parse(userIdString);
@@ -21,8 +24,10 @@ namespace SDA.Web.Views.Shared.Components.UserInfo
             var questionCount = allAttempts.Count();
             var rightPercent = questionCount==0? 0 : (int)(100*((double)allAttempts.Count(x => x.IsCorrect) / questionCount));
 
-            var info = new UserInfoDto { Questions = questionCount, RightPercent = rightPercent };
+            info = new UserInfoDto { Questions = questionCount, RightPercent = rightPercent };
+            }
             return View("UserInfo", info);
+
         }
     }
 }
