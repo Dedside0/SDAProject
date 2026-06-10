@@ -49,7 +49,7 @@
                     <div id="imageContainer"></div>
                     <div class="q-text" id="questionText"></div>
                     <ul class="answers-list" id="answersList"></ul>
-                    <div class="explanation-box" id="explanationBox" style="display:none; margin-top: 1rem; padding: 1rem; background: #f0f7ff; border-radius: 8px;">
+                    <div class="explanation-box" id="explanationBox" style="display:none; margin-top: 1rem; padding: 1rem; background: var(--surface2); border-radius: 8px; border: 1px solid var(--accent);">
                         <strong>📖 Пояснение:</strong>
                         <p id="explanationText"></p>
                     </div>
@@ -80,6 +80,7 @@ const questions = @Html.Raw(JsonSerializer.Serialize(Model, new JsonSerializerOp
     PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
     ReferenceHandler = ReferenceHandler.IgnoreCycles
 }));
+
 const $$ = id => document.getElementById(id);
 
 const els = {
@@ -97,7 +98,7 @@ const els = {
 };
 
 let index = 0;
-let time = 20 * 60; // 20 минут на все вопросы
+let time = 20 * 60;
 let finished = false;
 let timer;
 
@@ -133,9 +134,11 @@ function render() {
         : `<div class="q-image-placeholder">📖 Нет изображения</div>`;
 
     // Варианты ответов
-    els.answers.innerHTML = (qstn.answers || []).map((a, i) => {
+    els.answers.innerHTML = (qstn.answers || [])
+    .sort((a, b) => a.order - b.order)
+    .map((a, i) => {
         let cls = "";
-        let letter = String.fromCharCode(1040 + i); // А, Б, В, Г...
+        let letter = (i+1);
         
         if (checked !== null) {
             if (selected && selected.answerId === a.id) {
@@ -169,7 +172,6 @@ function render() {
     questionStartTime = Date.now();
 }
 
-// Функция для экранирования HTML
 function escapeHtml(text) {
     if (!text) return "";
     const div = document.createElement('div');
@@ -184,69 +186,61 @@ function attachAnswerEvents() {
     });
 }
 
-async function handleAnswerClick(e) {
+function handleAnswerClick(e) {
     const li = e.currentTarget;
+
     if (finished) return;
-    if (answers[index] !== null) return; // уже отвечен
+    if (answers[index] !== null) return;
 
     const answerId = li.dataset.answerId;
-    const questionId = questions[index].id;
+    const qstn = questions[index];
+    
+    const selectedAnswer = qstn.answers.find(a => a.id === answerId);
+    const correctAnswer = qstn.answers.find(a => a.isRight === true);
+    console.log(selectedAnswer)
+    console.log(correctAnswer)
+    if (!selectedAnswer || !correctAnswer) {
+        console.error('Ошибка: не найден ответ или правильный ответ');
+        return;
+    }
+    
+    const isRight = selectedAnswer.isRight === true;
+    const correctAnswerId = correctAnswer.id;
     const answeredAt = new Date().toISOString();
     const timeSpentSeconds = Math.round((Date.now() - questionStartTime) / 1000);
+    
+    // Сохраняем ответ
+    answers[index] = { 
+        questionId: qstn.id, 
+        answerId: answerId 
+    };
 
-    try {
-        const token = document.querySelector('input[name="__RequestVerificationToken"]').value;
+    // Сохраняем попытку для отправки
+    questionAttempts[index] = {
+        questionId: qstn.id,
+        selectedAnswerId: answerId,
+        isCorrect: isRight,
+        topic: qstn.topic ?? "",
+        answeredAt: answeredAt,
+        timeSpentSeconds: timeSpentSeconds
+    };
 
-        const response = await fetch('/Exam/CheckQuestion', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'RequestVerificationToken': token
-            },
-            body: JSON.stringify({ QuestionId: questionId, AnswerId: answerId })
-        });
+    // Сохраняем для UI
+    checkedAnswers[index] = {
+        correct: isRight,
+        correctId: correctAnswerId
+    };
 
-        if (!response.ok) { 
-            alert("Ошибка проверки"); 
-            return; 
-        }
+    render();
 
-        const data = await response.json();
-        
-        // Сохраняем ответ
-        answers[index] = { questionId, answerId };
-
-        // Сохраняем попытку для отправки
-        const qstn = questions[index];
-        questionAttempts[index] = {
-            questionId: questionId,
-            selectedAnswerId: answerId,
-            isCorrect: data.correct,
-            topic: qstn.topic ?? "",
-            answeredAt: answeredAt,
-            timeSpentSeconds: timeSpentSeconds
-        };
-
-        // Сохраняем для UI
-        checkedAnswers[index] = {
-            correct: data.correct,
-            correctId: data.correctId
-        };
-
-        render();
-
-        // Автоматический переход к следующему вопросу через 1.5 секунды
-        if (!finished && index < questions.length - 1) {
-            setTimeout(() => {
-                if (!finished && !allAnswered()) {
-                    next();
-                }
-            }, 1500);
-        }
-
-    } catch (err) {
-        console.error(err);
-        alert("Произошла ошибка при проверке ответа");
+    if (allAnswered() && index === questions.length - 1) {
+        finish();
+    }
+    // Если ответ правильный и есть следующий вопрос — автоматически переходим
+    if (isRight && !finished && index < questions.length - 1) {
+        setTimeout(() => {
+            if (!finished) next();
+        }, 300);
     }
 }
 
@@ -259,7 +253,6 @@ function finish() {
 
     // Формируем попытки для непросмотренных вопросов
     const attemptsPayload = questionAttempts.map((qa, i) => {
-        console.log(qa)
         if (qa !== null) return qa;
         return {
             questionId: questions[i].id,
@@ -270,27 +263,33 @@ function finish() {
             timeSpentSeconds: 0
         };
     });
-        console.log(attemptsPayload)
+
     $$("f_TimeSpent").value = totalSeconds;
     $$("f_QAttemptsJson").value = JSON.stringify(attemptsPayload);
-
     $$("finishForm").submit();
 }
 
 const nextBtn = $$("nextQuestionBtn");
 
 function updateNextButton() {
-    nextBtn.disabled = index === questions.length - 1 && !allAnswered();
+    if (nextBtn) {
+        nextBtn.disabled = index === questions.length - 1 && !allAnswered();
+    }
 }
 
-nextBtn.onclick = next;
-$$("prevQuestionBtn").onclick = prev;
+if (nextBtn) nextBtn.onclick = next;
+const prevBtn = $$("prevQuestionBtn");
+if (prevBtn) prevBtn.onclick = prev;
 
-$$("submitExamBtn").onclick = () => {
-    if (!finished && confirm("Завершить работу над ошибками?")) finish();
-};
+const submitBtn = $$("submitExamBtn");
+if (submitBtn) {
+    submitBtn.onclick = () => {
+        if (!finished && confirm("Завершить работу над ошибками?")) finish();
+    };
+}
 
 function renderDots() {
+    if (!els.dots) return;
     els.dots.innerHTML = questions.map((_, i) => `
         <div class="q-dot ${i === index ? "current" : ""} ${answers[i] !== null ? "answered" : ""}"
              onclick="goTo(${i})">${i + 1}</div>
@@ -298,6 +297,7 @@ function renderDots() {
 }
 
 function updateProgress() {
+    if (!els.progress || !els.counter) return;
     const answered = answers.filter(x => x !== null).length;
     const percent = questions.length > 0 ? (answered / questions.length * 100) : 0;
     els.progress.style.width = `${percent}%`;
@@ -331,6 +331,7 @@ function prev() {
 }
 
 function updateTimer() {
+    if (!els.timer) return;
     const m = String(Math.floor(time / 60)).padStart(2, "0");
     const s = String(time % 60).padStart(2, "0");
     els.timer.textContent = `${m}:${s}`;
@@ -350,9 +351,44 @@ function startTimer() {
     }, 1000);
 }
 
-// Запускаем
-render();
-startTimer();
+document.addEventListener('keydown', function(e) {
+    if (finished) return;
+    if (!questions || questions.length === 0) return;
+    
+    // Стрелка влево - предыдущий вопрос
+    if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        if (index > 0) {
+            prev();
+        }
+    }
+    // Стрелка вправо - следующий вопрос
+    else if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        if (index < questions.length - 1) {
+            next();
+        } else if (allAnswered()) {
+            if (confirm("Вы ответили на все вопросы. Завершить работу над ошибками?")) 
+                finish();
+        }
+    }
+    // Цифры 1-4 для выбора ответа (если вопрос еще не отвечен)
+    else if (!finished && answers[index] === null && /^[1-4]$/.test(e.key)) {
+        e.preventDefault();
+        const answerIndex = parseInt(e.key) - 1;
+        const answersList = document.querySelectorAll('.answer-item');
+        if (answersList[answerIndex]) {
+            answersList[answerIndex].click();
+        }
+    }
+    });
+
+
+// Запускаем (только если есть вопросы)
+if (questions && questions.length > 0) {
+    render();
+    startTimer();
+}
 </script>
 }
 

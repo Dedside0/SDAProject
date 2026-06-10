@@ -1,4 +1,5 @@
-﻿<!-- ───────── SIDEBAR NAV ───────── -->
+﻿@using SDA.Db
+<!-- ───────── SIDEBAR NAV ───────── -->
 <nav class="sidebar" id="sidebar">
     <div class="sidebar-logo">
         <span class="logo-icon">🚦</span>
@@ -10,16 +11,16 @@
                 <span class="nav-icon">⬡</span> Главная
             </a>
         </li>
-        <li>
+        @* <li>
             <a asp-controller="Home" asp-action="exam" class="nav-link" data-page="exam">
                 <span class="nav-icon">◈</span> Экзамен
             </a>
-        </li>
-        <li>
+        </li> *@
+        @* <li>
             <a asp-controller="Home" asp-action="train" class="nav-link" data-page="train">
                 <span class="nav-icon">◉</span> Тренировка
             </a>
-        </li>
+        </li> *@
         <li>
             <a asp-controller="Mistakes" asp-action="Index" class="nav-link" data-page="mistakes">
                 <span class="nav-icon">◪</span> Ошибки
@@ -30,7 +31,7 @@
                 <span class="nav-icon">◧</span> Статистика
             </a>
         </li>
-        @if (User.IsInRole("Admin"))
+        @if (User.IsInRole(Constants.AdminRoleName))
         {
             
         <li class="nav-item-dropdown">
@@ -50,34 +51,12 @@
                 <span class="sub-icon">◉</span> Темы
             </a>
         </li>
-        <li>
-            <a asp-controller="Admin" asp-action="EditUser" class="nav-sublink">
-                <span class="sub-icon">◎</span> Пользователи
-            </a>
-        </li>
     </ul>
 </li>
 
         }
     </ul>
     <div class="sidebar-bottom">
-        @if (User.Identity.IsAuthenticated)
-        {
-            <div class="auth-block user-state">
-                <div class="user-card">
-                    <div class="user-avatar">@User.Identity.Name.Substring(0, 2).ToUpper()</div>
-                    <div class="user-info">
-                        <span class="user-name">@User.Identity.Name</span>
-                    </div>
-                </div>
-                <a asp-controller="Account" asp-action="Logout" class="sidebar-logout">Выйти</a>
-            </div>
-        }
-        else
-        {
-            <div class="auth-block guest-state">
-                <a asp-controller="Account" asp-action="Authorization" class="btn-sidebar-login">Войти</a>
-            </div>
-        }
+        @await Component.InvokeAsync("User")
     </div>
 </nav>

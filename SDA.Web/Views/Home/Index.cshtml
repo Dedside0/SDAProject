@@ -8,27 +8,14 @@
     </div>
 
     <!-- СТАТИСТИКА -->
-    <div class="home-stats-row">
-        <div class="hstat-card">
-            <span class="hstat-num" id="hs-total">0</span>
-            <span class="hstat-label">Вопросов пройдено</span>
-        </div>
-
-        <div class="hstat-card accent">
-            <span class="hstat-num" id="hs-correct">0%</span>
-            <span class="hstat-label">Правильных ответов</span>
-        </div>
-
-        <div class="hstat-card">
-            <span class="hstat-num" id="hs-streak">0</span>
-            <span class="hstat-label">Дней подряд</span>
-        </div>
-    </div>
+    @await Component.InvokeAsync("UserInfo")
 
     <!-- РЕЖИМЫ -->
     <h2 class="section-heading">Режимы подготовки</h2>
 
+    
     <div class="mode-grid">
+        <a asp-controller="GeneratedExam" asp-action="Start" style="text-decoration:none; color:white;">
         <div class="mode-card" data-goto="exam">
             <div class="mode-icon">◈</div>
 
@@ -41,7 +28,9 @@
 
             <div class="mode-tag">официальный</div>
         </div>
+        </a>
 
+        <a asp-controller="Exam" asp-action="Traning" style="text-decoration:none; color:white;">
         <div class="mode-card" data-goto="train">
             <div class="mode-icon">◉</div>
 
@@ -54,7 +43,9 @@
 
             <div class="mode-tag">рекомендуется</div>
         </div>
+        </a>
 
+         <a asp-controller="Mistakes" asp-action="Index" style="text-decoration:none; color:white;">
         <div class="mode-card" data-goto="mistakes">
             <div class="mode-icon">◪</div>
 
@@ -69,6 +60,7 @@
                 0 ошибок
             </div>
         </div>
+        </a>
     </div>
 
     <!-- БИЛЕТЫ -->
@@ -86,7 +78,7 @@
     </div>
 
     <!-- ТЕМЫ -->
-    <div class="home-section">
+    @* <div class="home-section">
         <div class="section-head">
             <h2 class="section-heading">Темы</h2>
 
@@ -150,5 +142,5 @@
             </div>
 
         </div>
-    </div>
+    </div> *@
 </section>

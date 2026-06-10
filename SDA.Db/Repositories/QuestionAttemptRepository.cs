@@ -1,4 +1,5 @@
-﻿using SDA.Db.Models;
+﻿using Microsoft.EntityFrameworkCore;
+using SDA.Db.Models;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
@@ -20,6 +21,13 @@ namespace SDA.Db.Repositories
         {
             return dbContext.QuestionAttempts
                 .Where(qa => qa.ExamAttemptId == attemptId)
+                .ToList();
+        }
+
+        public List<QuestionAttempt> GetUserAttempts(Guid userId)
+        {
+            return dbContext.QuestionAttempts.Include(x=>x.User).Include(x=>x.Question)
+                .Where(x => x.UserId == userId)
                 .ToList();
         }
     }

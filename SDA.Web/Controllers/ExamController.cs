@@ -1,7 +1,9 @@
 ﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using SDA.Db.Models;
 using SDA.Db.Repositories;
+using SDA.Web;
 using SDA.Web.Models;
 using SDA.Web.Models.DTO;
 using System.Security.Claims;
@@ -10,39 +12,14 @@ using System.Text.Json;
 namespace SDAProject.Controllers
 {
     [Authorize]
-    public class ExamController(
+    public partial class ExamController(
         ITicketRepository ticketRepository,
         IQuestionRepository questionRepository,
-        IUserRepository userRepository,
         IQuestionAttemptRepository questionAttemptRepository,
         IExamAttemptRepository examAttemptRepository,
-        IUserMistakeQueueRepository userMistakeQueueRepository) : Controller
+        IUserMistakeQueueRepository userMistakeQueueRepository,
+        UserManager<User> userManager) : Controller
     {
-        public class FinishExamDto
-        {
-            public Guid TicketId { get; set; }
-            public int TimeSpentSeconds { get; set; }
-            public string QuestionAttemptsJson { get; set; } = "";
-        }
-
-
-        public class QuestionAttemptDto
-        {
-            public Guid QuestionId { get; set; }
-            public Guid? SelectedAnswerId { get; set; }
-            public bool IsCorrect { get; set; }
-            public string? Topic { get; set; }
-            public DateTime AnsweredAt { get; set; }
-            public int TimeSpentSeconds { get; set; }
-        }
-
-        public class CheckQuestionDto
-        {
-            public Guid QuestionId { get; set; }
-            public Guid AnswerId { get; set; }
-        }
-
-
         public async Task<IActionResult> Index(Guid id)
         {
             var ticket = await ticketRepository.GetById(id);
@@ -61,13 +38,14 @@ namespace SDAProject.Controllers
                         Id = tQuest.QuestionId,
                         Text = tQuest.Question.Text,
                         ImageUrl = tQuest.Question.ImageUrl,
-                        Exploration = tQuest.Question.Exploration,
+                        Explanation = tQuest.Question.Explanation,
                         Topic = tQuest.Question.Topic?.Name,
                         Answers = tQuest.Question.Answers.Select(ans => new AnswerVm()
                         {
                             Id = ans.Id,
                             Text = ans.Text,
-                            Order = ans.Order
+                            Order = ans.Order,
+                            IsRight = ans.IsRight,
                         }).ToList()
                     }
                 }).ToList()
@@ -77,32 +55,13 @@ namespace SDAProject.Controllers
         }
 
 
-        [ValidateAntiForgeryToken]
-        [HttpPost]
-        public IActionResult CheckQuestion([FromBody] CheckAnswerDTO dto)
-        {
-            if (dto is null)
-                return BadRequest();
-
-            var question = questionRepository.GetById(dto.QuestionId);
-            if (question is null)
-                return BadRequest();
-
-            var rightAnswer = question.Answers.FirstOrDefault(x => x.IsRight);
-            if (rightAnswer is null)
-                return BadRequest();
-
-            return Ok(new { correct = rightAnswer.Id == dto.AnswerId, correctId=rightAnswer.Id });
-
-        }
 
 
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> FinishExam(FinishExamDto dto)
         {
-            var userId = Guid.Parse(
-                User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            var userId = Guid.Parse(userManager.GetUserId(User));
 
             var qaList = new List<QuestionAttemptDto>();
             if (!string.IsNullOrWhiteSpace(dto.QuestionAttemptsJson))
@@ -112,7 +71,12 @@ namespace SDAProject.Controllers
                     new JsonSerializerOptions { PropertyNameCaseInsensitive = true }
                 ) ?? new();
             }
-
+            foreach (var item in qaList)
+            {
+                var question = questionRepository.GetById(item.QuestionId);
+                var correctAns = question.Answers.FirstOrDefault(a => a.IsRight);
+                item.IsCorrect = correctAns.Id == item.SelectedAnswerId;
+            }
             int correctCount = 0;
             int wrongCount = 0;
 
@@ -152,6 +116,7 @@ namespace SDAProject.Controllers
                     SelectedAnswerId = qa.SelectedAnswerId,
                     IsCorrect = qa.IsCorrect,
                     Topic = qa.Topic,
+                    UserId = userId,
                     AnsweredAt = qa.AnsweredAt.Kind == DateTimeKind.Utc
                                            ? qa.AnsweredAt
                                            : qa.AnsweredAt.ToUniversalTime()
@@ -191,6 +156,26 @@ namespace SDAProject.Controllers
             return View(vm);
         }
 
+        public IActionResult Traning()
+        {
+            var allQuestions = questionRepository.GetAll();
+
+            var random = new Random();
+            var shuffledQuestions = allQuestions.OrderBy(x => random.Next()).ToList();
+
+            var vm = new TicketVm
+            {
+                Id = Guid.Empty,
+                Name = "Режим тренировки: Все вопросы",
+                TicketQuestions = shuffledQuestions.Select((q, index) => new TicketQuestionVm
+                {
+                    Order = index,
+                    Question = q.ToQuestionVm()
+                }).ToList()
+            };
+
+            return View(vm);
+        }
 
     }
 }

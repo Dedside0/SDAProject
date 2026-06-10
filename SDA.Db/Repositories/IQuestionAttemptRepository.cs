@@ -6,5 +6,7 @@ namespace SDA.Db.Repositories
     {
         void Create(QuestionAttempt questionAttempt);
         List<QuestionAttempt> GetListById(Guid attemptId);
+
+        List<QuestionAttempt> GetUserAttempts(Guid userId);
     }
 }

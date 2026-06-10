@@ -14,26 +14,30 @@ namespace SDA.Web.Controllers
             return View();
         }
 
-        [HttpPost]
-        public IActionResult Authorization(Authorization authorization)
+        [HttpPost] 
+        public async Task<IActionResult> Authorization(Authorization authorization)
         {
             if (!ModelState.IsValid)
             {
                 return View(authorization);
             }
 
-            var result = _signInManager.PasswordSignInAsync(authorization.Login, authorization.Password,
-                         authorization.IsRememberMe, false).Result;
+            var result = await _signInManager.PasswordSignInAsync(
+                authorization.Login,
+                authorization.Password,
+                authorization.IsRememberMe,
+                lockoutOnFailure: false
+            );
 
             if (!result.Succeeded)
             {
                 ModelState.AddModelError("", "Неверный логин или пароль");
+                return View(authorization);
             }
 
-            return result.Succeeded
-                    ? RedirectToAction(nameof(Index), "Home")
-                    : View(authorization);
+            return RedirectToAction(nameof(Index), "Home");
         }
+
 
         public IActionResult Registration()
         {
@@ -64,9 +68,10 @@ namespace SDA.Web.Controllers
 
             var user = new User()
             {
+                
                 Email = registration.Login,
-                UserName = registration.Name,
-                //PhoneNumber = registration.Phone,
+                UserName = registration.Login,
+                FullName = registration.Name,
                 RegistrationDateTime = DateTime.UtcNow
             };
 
