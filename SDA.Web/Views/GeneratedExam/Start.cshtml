@@ -218,7 +218,7 @@ function render() {
 
     $$('imageContainer').innerHTML = q.imageUrl
         ? `<img src="${q.imageUrl}" class="q-image">`
-        : '';
+                : `<div class="q-image-placeholder">🚗 Нет изображения</div>`;
 
     $$('questionText').textContent = `${index + 1}. ${q.text}`;
 
@@ -230,7 +230,7 @@ function render() {
             if (correctAnswerId == a.id) cls += ' show-correct';
         }
         return `<li class="answer-item ${cls}" data-answer-id="${a.id}">
-                    <span class="answer-letter">${String.fromCharCode(1040 + i)}</span>
+                    <span class="answer-letter">${(i+1)}</span>
                     <span class="answer-text">${a.text}</span>
                 </li>`;
     }).join('');
@@ -533,6 +533,39 @@ function startTimer() {
         );
     }, 1000);
 }
+
+        document.addEventListener('keydown', async function(e) {
+            if (finished) return; 
+
+            if (e.key === 'ArrowLeft') {
+                e.preventDefault(); 
+                if (index > 0) {
+                    index--;
+                    questionStartTime = Date.now();
+                    render();
+                }
+            }
+            else if (e.key === 'ArrowRight') {
+                e.preventDefault();
+                if (index < questions.length - 1) {
+                    index++;
+                    questionStartTime = Date.now();
+                    render();
+                } else if (answers.size === questions.length && !finished) {
+                    
+                    await checkAllAnswered();
+                }
+            }
+                    else if (!answers.has(questions[index]?.id) && !finished && /^[1-4]$/.test(e.key)) {
+                e.preventDefault();
+                const answerIndex = parseInt(e.key) - 1;
+                const answersList = document.querySelectorAll('.answer-item');
+                if (answersList[answerIndex]) {
+                    answersList[answerIndex].click();
+                }
+            }
+            });
+
 
 // ── СТАРТ ─────────────────────────────────────────────────────────────────
 render();

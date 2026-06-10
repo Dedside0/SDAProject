@@ -138,7 +138,7 @@ function render() {
     .sort((a, b) => a.order - b.order)
     .map((a, i) => {
         let cls = "";
-        let letter = String.fromCharCode(1040 + i);
+        let letter = (i+1);
         
         if (checked !== null) {
             if (selected && selected.answerId === a.id) {
@@ -350,6 +350,39 @@ function startTimer() {
         updateTimer();
     }, 1000);
 }
+
+document.addEventListener('keydown', function(e) {
+    if (finished) return;
+    if (!questions || questions.length === 0) return;
+    
+    // Стрелка влево - предыдущий вопрос
+    if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        if (index > 0) {
+            prev();
+        }
+    }
+    // Стрелка вправо - следующий вопрос
+    else if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        if (index < questions.length - 1) {
+            next();
+        } else if (allAnswered()) {
+            if (confirm("Вы ответили на все вопросы. Завершить работу над ошибками?")) 
+                finish();
+        }
+    }
+    // Цифры 1-4 для выбора ответа (если вопрос еще не отвечен)
+    else if (!finished && answers[index] === null && /^[1-4]$/.test(e.key)) {
+        e.preventDefault();
+        const answerIndex = parseInt(e.key) - 1;
+        const answersList = document.querySelectorAll('.answer-item');
+        if (answersList[answerIndex]) {
+            answersList[answerIndex].click();
+        }
+    }
+    });
+
 
 // Запускаем (только если есть вопросы)
 if (questions && questions.length > 0) {
